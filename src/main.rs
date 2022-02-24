@@ -1,31 +1,21 @@
-use image::ColorType;
-use std::fs::File;
-use image::png::PNGEncoder;
-extern crate nalgebra;
-use nalgebra::{Vector3};
-
-fn write_image(filename: &str, pixels: &[u8], width: usize, height: usize) -> Result<(), std::io::Error> {
-    let output = File::create(filename)?;
-    let encoder = PNGEncoder::new(output);
-    encoder.encode(pixels, width as u32, height as u32, ColorType::RGB(8))?;
-    return Ok(());
-}
+mod utils;
+use crate::utils::write_image;
 
 fn main() {
 
-    let width = 200;
-    let height = 100;
+    let width = 256;
+    let height = 256;
 
     let mut pixels = vec![0; width * height * 3];
 
-    for j in 0..height {
-        for i in 0..width {
+    for y in (0..height).rev() {
+        for x in 0..width {
 
-            let r = i as f32 / width as f32;
-            let g = j as f32 / height as f32;
-            let b = 1. as f32;
+            let r = x as f32 / width as f32;
+            let g = y as f32 / height as f32;
+            let b = 0.25 as f32;
 
-            let offset = j * width + i;
+            let offset = y * width + x;
             pixels[offset * 3] = (255. * r) as u8;
             pixels[offset * 3 + 1] = (255. * g) as u8;
             pixels[offset * 3 + 2] = (255. * b) as u8;
