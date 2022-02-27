@@ -8,11 +8,11 @@ pub struct Scene {
 
 impl Scene {
     
-    pub fn new(camera: Camera, objects: Vec<Box<dyn ObjectsTrait>>, lights: Vec<Box<dyn LightTrait>>) -> Self {
+    pub fn new(camera: Camera) -> Self {
         Self {
             camera,
-            objects, 
-            lights
+            objects: Vec::new(), 
+            lights: Vec::new()
         }
     }
 
