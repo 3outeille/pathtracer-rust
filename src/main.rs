@@ -15,7 +15,7 @@ use { crate::objects::*, crate::light::*, crate::scene::*, crate::camera::*, cra
 
 fn main() {
     let aspect_ratio = 16.0 / 9.0;
-    let canvas_width = 300_usize;
+    let canvas_width = 700_usize;
     let canvas_height = (canvas_width as f32 / aspect_ratio) as usize;
 
     let camera = Camera::new(
@@ -46,21 +46,12 @@ fn main() {
 
     for y in 0..canvas_height {
         for x in 0..canvas_width {
+            
             let u = x as f32 / canvas_width as f32;
             let v = y as f32 / canvas_height as f32;
-
-            let offset = y * canvas_width + x;
-
+            
             let ray = scene.camera.cast_ray(u, v);
-
-            for object in scene.objects.iter() {
-
-                if object.intersects(&ray) {
-                    pixels[offset * 3] = 255;
-                    pixels[offset * 3 + 1] = 255;
-                    pixels[offset * 3 + 2] = 255;
-                }
-            }
+            scene.color_ray(&ray, y * canvas_width + x, &mut pixels);
         }
     }
 
