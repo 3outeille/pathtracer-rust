@@ -10,7 +10,7 @@ pub struct Camera {
     pub x_axis: Vector3<f32>,
     pub y_axis: Vector3<f32>,
     pub z_axis: Vector3<f32>,
-    pub bottom_left: Vector3<f32>,
+    pub top_left_start: Vector3<f32>,
     pub fov_x: f32, // horizontal field of view
     pub focal_distance: f32,
 }
@@ -27,23 +27,23 @@ impl Camera {
         let viewport_height = viewport_width / aspect_ratio;
 
         let x_axis = Vector3::new(viewport_width, 0.0, 0.0); // right
-        let y_axis = Vector3::new(0.0, -viewport_height, 0.0); // up
+        let y_axis = Vector3::new(0.0, viewport_height, 0.0); // up
         let z_axis = Vector3::new(0.0, 0.0, focal_distance); // depth
-        let bottom_left = origin - x_axis/2.0 - y_axis/2.0 + z_axis;
+        let top_left_start = origin - x_axis/2.0 + y_axis/2.0 + z_axis;
 
         Self {
             origin,
             x_axis,
             y_axis,
             z_axis,
-            bottom_left,
+            top_left_start,
             fov_x,
             focal_distance,
         }
     }
 
     pub fn cast_ray(&self, u: f32, v: f32) -> Ray {
-        let target = self.bottom_left + (u * self.x_axis  + v * self.y_axis);
+        let target = self.top_left_start + u * self.x_axis - v * self.y_axis;
         return Ray::new(self.origin, target - self.origin);
     }
 }

@@ -28,7 +28,7 @@ fn main() {
 
     scene.add_object(
         Box::new(Sphere {
-            center: Vector3::new(2.25, 0.0, 2.0),
+            center: Vector3::new(-1.25, 0.0, 3.0),
             radius: 0.5,
             textmat: Box::new(UniformTexture {})
         })
@@ -37,17 +37,18 @@ fn main() {
     scene.add_object(
         Box::new(Sphere {
             center: Vector3::new(0.0, 0.0, 2.0),
-            radius: 0.5,
+            radius: 0.75,
             textmat: Box::new(UniformTexture {})
         })
     );
 
-    let mut pixels = vec![255; canvas_width * canvas_height * 3];
+    let mut pixels = vec![0; canvas_width * canvas_height * 3];
 
     for y in 0..canvas_height {
         for x in 0..canvas_width {
             let u = x as f32 / canvas_width as f32;
             let v = y as f32 / canvas_height as f32;
+
             let offset = y * canvas_width + x;
 
             let ray = scene.camera.cast_ray(u, v);
@@ -55,9 +56,9 @@ fn main() {
             for object in scene.objects.iter() {
 
                 if object.intersects(&ray) {
-                    pixels[offset * 3] = 0;
-                    pixels[offset * 3 + 1] = 0;
-                    pixels[offset * 3 + 2] = 0;
+                    pixels[offset * 3] = 255;
+                    pixels[offset * 3 + 1] = 255;
+                    pixels[offset * 3 + 2] = 255;
                 }
             }
         }
