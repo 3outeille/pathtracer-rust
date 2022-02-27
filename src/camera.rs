@@ -26,9 +26,9 @@ impl Camera {
         let viewport_width = 2.0 * fov_x.tan() * focal_distance;
         let viewport_height = viewport_width / aspect_ratio;
 
-        let x_axis = Vector3::new(viewport_width, 0.0, 0.0);
-        let y_axis = Vector3::new(0.0, viewport_height, 0.0);
-        let z_axis = Vector3::new(0.0, 0.0, focal_distance);
+        let x_axis = Vector3::new(viewport_width, 0.0, 0.0); // right
+        let y_axis = Vector3::new(0.0, -viewport_height, 0.0); // up
+        let z_axis = Vector3::new(0.0, 0.0, focal_distance); // depth
         let bottom_left = origin - x_axis/2.0 - y_axis/2.0 + z_axis;
 
         Self {
