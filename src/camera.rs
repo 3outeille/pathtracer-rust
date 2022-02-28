@@ -22,9 +22,9 @@ impl Camera {
         let viewport_height = viewport_width / aspect_ratio_arg;
 
         let origin = origin_arg;
-        let x_axis = Vector3::new(viewport_width, 0.0, 0.0).normalize(); // right
-        let y_axis = Vector3::new(0.0, viewport_height, 0.0).normalize(); // up
-        let z_axis = x_axis.cross(&y_axis).normalize();  // depth
+        let x_axis = Vector3::new(viewport_width, 0.0, 0.0); // right
+        let y_axis = Vector3::new(0.0, viewport_height, 0.0); // up
+        let z_axis = x_axis.cross(&y_axis);  // depth
 
         let top_left_start = origin - x_axis/2.0 + y_axis/2.0 + z_axis;
 

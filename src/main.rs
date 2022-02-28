@@ -29,19 +29,19 @@ fn main() {
 
     scene.add_object(
         Box::new(Sphere {
-            center: Vector3::new(0.0, 0.0, 10.0),
-            radius: 0.5,
+            center: Vector3::new(0.0, -1.0, 2.0),
+            radius: 1.0,
             textmat: Box::new(UniformTexture {})
         })
     );
     
-    // scene.add_object(
-    //     Box::new(Sphere {
-    //         center: Vector3::new(0.0, 0.0, 2.0),
-    //         radius: 0.75,
-    //         textmat: Box::new(UniformTexture {})
-    //     })
-    // );
+    scene.add_object(
+        Box::new(Sphere {
+            center: Vector3::new(0.0, 0.0, 4.0),
+            radius: 0.75,
+            textmat: Box::new(UniformTexture {})
+        })
+    );
 
     let mut pixels = vec![0; canvas_width * canvas_height * 3];
 
