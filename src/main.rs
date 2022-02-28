@@ -50,9 +50,13 @@ fn main() {
             
             let u = x as f32 / canvas_width as f32;
             let v = y as f32 / canvas_height as f32;
-            
-            let ray = scene.camera.cast_ray(u, v);
-            scene.color_ray(&ray, y * canvas_width + x, &mut pixels);
+
+            match scene.cast_ray(u, v) {
+                (intersect_point, Some(min_obj)) => {
+                    scene.color_ray(intersect_point, y * canvas_width + x, &mut pixels);     
+                },
+                (intersect_point, None) => {}
+            };
         }
     }
 

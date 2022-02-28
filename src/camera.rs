@@ -37,9 +37,4 @@ impl Camera {
             top_left_start,
         }
     }
-
-    pub fn cast_ray(&self, u: f32, v: f32) -> Ray {
-        let target = self.top_left_start + u * self.x_axis - v * self.y_axis;
-        return Ray::new(self.origin, target - self.origin);
-    }
 }
