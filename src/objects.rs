@@ -34,7 +34,7 @@ impl ObjectsTrait for Sphere {
             return -1.0;
         }
         
-        let root = -b - discriminant.sqrt() / (2.0 * a);
+        let root = (-b - discriminant.sqrt()) / (2.0 * a);
 
         if root < 0.0 {
             return -1.0;

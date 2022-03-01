@@ -32,7 +32,7 @@ impl Scene {
 
     pub fn cast_ray(&self, u: f32, v: f32) -> (Vector3<f32>, Option<Rc<dyn ObjectsTrait>>) {
         let target = self.camera.top_left_start + u * self.camera.x_axis - v * self.camera.y_axis;
-        let ray = Ray::new(self.camera.origin, target - self.camera.origin);
+        let ray = Ray::new(self.camera.origin, (target - self.camera.origin).normalize());
 
         let mut min_t = std::f32::MAX;
         let mut min_obj: Option<Rc<dyn ObjectsTrait>>= None;
@@ -63,7 +63,7 @@ impl Scene {
 
         for light in &self.lights {
             let light_dir = (intersection_point - light.position).normalize();
-            let dot_prod_res = light_dir.dot(&normal).clamp(0.0, 1.0);
+            let dot_prod_res = (-light_dir.dot(&normal)).clamp(0.0, 1.0);
             diffuse_light_intensity += light.intensity * dot_prod_res;
         }
         

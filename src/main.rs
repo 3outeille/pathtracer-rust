@@ -39,18 +39,10 @@ fn main() {
         Rc::new(Sphere {
             center: Vector3::new(0.0, 0.0, 7.0),
             radius: 1.0,
-            textmat: ivory
+            textmat: ivory.clone()
         })
     );
     
-    scene.add_object(
-        Rc::new(Sphere {
-            center: Vector3::new(0.0, 1.5, 5.0),
-            radius: 1.0,
-            textmat: red
-        })
-    );
-
     scene.add_light(
         PointLight::new(
             Vector3::new(0.0, 1.5, 5.0),
