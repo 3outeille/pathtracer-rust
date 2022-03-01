@@ -1,11 +1,10 @@
 extern crate nalgebra;
 
 use nalgebra::Vector3;
-use dyn_clone::{clone_trait_object, DynClone};
 
 use { crate::texture_material::TextureMaterial, crate::ray::Ray };
 
-pub trait ObjectsTrait: DynClone {
+pub trait ObjectsTrait {
     fn intersects(&self, ray: &Ray) -> f32;
 
     fn get_normal(&self, point: Vector3<f32>) -> Vector3<f32>;
@@ -13,9 +12,6 @@ pub trait ObjectsTrait: DynClone {
     fn get_texture(&self, point: Vector3<f32>) -> Vector3<f32>;
 }
 
-clone_trait_object!(ObjectsTrait);
-
-#[derive(Clone)]
 pub struct Sphere {
     pub center: Vector3<f32>,
     pub radius: f32,
