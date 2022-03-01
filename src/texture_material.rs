@@ -1,19 +1,26 @@
+use nalgebra::Vector3;
+
+// pub struct TextureInfo;
+
 pub trait TextureMaterial: {
-    fn get_texture(&self, x: u32, y: u32) -> TextureInfo;
+    // fn get_texture(&self,  point: Vector3<f32>) -> TextureInfo;
+    fn get_texture(&self,  point: Vector3<f32>) -> Vector3<f32>;
 }
 
-pub struct TextureInfo;
+pub struct UniformTexture {
+    pub color: Vector3<f32>
+}
 
-pub struct UniformTexture;
-
-// impl UniformTexture {
-//     pub fn new() -> Self {
-//         Self {}
-//     }
-// }
+impl UniformTexture {
+    pub fn new(color_arg: Vector3<f32>) -> Self {
+        Self {
+            color: color_arg
+        }
+    }
+}
 
 impl TextureMaterial for UniformTexture {
-    fn get_texture(&self, x: u32, y: u32) -> TextureInfo {
-        todo!()
+    fn get_texture(&self, point: Vector3<f32>) -> Vector3<f32> {
+        return self.color;
     }
 }

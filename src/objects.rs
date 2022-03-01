@@ -1,5 +1,7 @@
 extern crate nalgebra;
 
+use std::rc::Rc;
+
 use nalgebra::Vector3;
 
 use { crate::texture_material::TextureMaterial, crate::ray::Ray };
@@ -15,7 +17,7 @@ pub trait ObjectsTrait {
 pub struct Sphere {
     pub center: Vector3<f32>,
     pub radius: f32,
-    pub textmat: Box<dyn TextureMaterial>
+    pub textmat: Rc<dyn TextureMaterial>
 }
 
 impl ObjectsTrait for Sphere {
@@ -42,10 +44,10 @@ impl ObjectsTrait for Sphere {
     }
 
     fn get_normal(&self, point: Vector3<f32>) -> Vector3<f32> {
-        todo!()
+        return point - self.center;
     }
 
     fn get_texture(&self, point: Vector3<f32>) -> Vector3<f32> {
-        todo!()
+        return self.textmat.get_texture(point);
     }
 }
