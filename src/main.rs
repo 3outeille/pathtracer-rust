@@ -42,7 +42,7 @@ fn main() {
             textmat: ivory.clone()
         })
     );
-    
+
     scene.add_light(
         PointLight::new(
             Vector3::new(0.0, 1.5, 5.0),
@@ -58,12 +58,9 @@ fn main() {
             let u = x as f32 / canvas_width as f32;
             let v = y as f32 / canvas_height as f32;
 
-            match scene.cast_ray(u, v) {
-                (intersect_point, Some(min_obj)) => {
-                    scene.color_ray(intersect_point, &min_obj, y * canvas_width + x, &mut pixels);     
-                },
-                (intersect_point, None) => {}
-            };
+            if let (intersect_point, Some(min_obj)) = scene.cast_ray(u, v) {
+                scene.color_ray(intersect_point, &min_obj, y * canvas_width + x, &mut pixels);     
+            }
         }
     }
 
