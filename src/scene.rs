@@ -40,13 +40,13 @@ impl Scene {
         for object in &self.objects {
 
             // Find the nearest root.
-            let t = object.intersects(&ray);
-            if t == -1.0 { continue; }
-            
-            if t < min_t {
-                min_obj = Some(object.clone());
-                min_t = t;
-            }
+            match object.intersects(&ray) {
+                Some(t) if (t < min_t) =>  {
+                    min_obj = Some(object.clone());
+                    min_t = t;
+                }
+                _ => { continue; }
+            };
         }
 
         let intersection_point = ray.at(min_t);

@@ -7,7 +7,7 @@ use nalgebra::Vector3;
 use { crate::texture_material::TextureMaterial, crate::ray::Ray };
 
 pub trait ObjectsTrait {
-    fn intersects(&self, ray: &Ray) -> f32;
+    fn intersects(&self, ray: &Ray) -> Option<f32>;
 
     fn get_normal(&self, point: Vector3<f32>) -> Vector3<f32>;
 
@@ -22,7 +22,7 @@ pub struct Sphere {
 
 impl ObjectsTrait for Sphere {
 
-    fn intersects(&self, ray: &Ray) -> f32 {
+    fn intersects(&self, ray: &Ray) -> Option<f32> {
         let oc = ray.origin - self.center;
 
         let a = ray.direction.dot(&ray.direction);
@@ -30,17 +30,13 @@ impl ObjectsTrait for Sphere {
         let c = oc.dot(&oc) - self.radius * self.radius;
         let discriminant = b*b - 4. * a * c;
 
-        if discriminant < 0.0 {
-            return -1.0;
-        }
+        if discriminant < 0.0 { return None; }
         
         let root = (-b - discriminant.sqrt()) / (2.0 * a);
 
-        if root < 0.0 {
-            return -1.0;
-        }
+        if root < 0.0 { return None; }
 
-        return root;
+        return Some(root);
     }
 
     fn get_normal(&self, point: Vector3<f32>) -> Vector3<f32> {
