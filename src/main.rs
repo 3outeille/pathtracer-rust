@@ -17,7 +17,7 @@ use { crate::objects::*, crate::light::*, crate::scene::*, crate::camera::*, cra
 
 fn main() {
     let aspect_ratio = 16.0 / 9.0;
-    let canvas_width = 400_usize;
+    let canvas_width = 720_usize;
     let canvas_height = (canvas_width as f32 / aspect_ratio) as usize;
 
     let camera = Camera::new(
@@ -27,7 +27,7 @@ fn main() {
         1.0
     );
 
-    println!("widht = {} | height = {}", canvas_width, canvas_height);
+    println!("{}x{}", canvas_width, canvas_height);
 
     let mut scene = Scene::new(camera);
     
@@ -112,7 +112,7 @@ fn main() {
 
     scene.add_object(
         Rc::new(Sphere {
-            center: Vector3::new(-0.55, 0.0, 6.0),
+            center: Vector3::new(-1.0, 0.0, 7.0),
             radius: 1.0,
             textmat: red.clone()
         })
@@ -120,7 +120,7 @@ fn main() {
 
     scene.add_object(
         Rc::new(Sphere {
-            center: Vector3::new(1.5, 0.0, 7.0),
+            center: Vector3::new(1.0, 0.0, 7.0),
             radius: 1.0,
             textmat: green.clone()
         })
@@ -128,7 +128,7 @@ fn main() {
 
     scene.add_light(
         PointLight::new(
-            Vector3::new(0.0, 0.0, -0.0),
+            Vector3::new(0.0, 0.0, 0.0),
             1.5
         )
     );

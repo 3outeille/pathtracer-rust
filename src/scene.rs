@@ -7,7 +7,7 @@ use nalgebra::Vector3;
 use crate::{camera::Camera, objects::{ObjectsTrait, self}, light::{PointLight, self}, Ray};
 
 const EPSILON: f32 = 1e-4;
-const REFLECTION_DEPTH: i32 = 2;
+const REFLECTION_DEPTH: i32 = 5;
 
 pub struct Scene {
     pub camera: Camera,
@@ -95,8 +95,9 @@ impl Scene {
             return pixel_color;
         }
 
-        // When casting rays using previous interesection point, ray may hit under the surface
-        // due to numerical precision.
+        // When casting rays using previous intersection point, ray may hit under the surface
+        // due to numerical precision of the intersection point calculation (discriminant).
+        // The more rays are casted using previous intersection point, the more the error accumulate.
         let (reflected_intersection_point, new_obj, reflected_ray) = self.cast_ray(intersection_point.unwrap() + (normal * EPSILON), reflection.x, reflection.y);
         
         if new_obj.is_none() { 
@@ -105,5 +106,4 @@ impl Scene {
         
         return pixel_color + reflectivity * self.get_color_ray(&reflected_intersection_point, &new_obj.unwrap(), &reflected_ray, depth + 1);
     }
-
 }
