@@ -39,7 +39,7 @@ fn main() {
         Rc::new(Sphere {
             center: Vector3::new(0.0, 0.0, 7.0),
             radius: 1.0,
-            textmat: ivory.clone()
+            textmat: red.clone()
         })
     );
 
@@ -58,8 +58,8 @@ fn main() {
             let u = x as f32 / canvas_width as f32;
             let v = y as f32 / canvas_height as f32;
 
-            if let (intersect_point, Some(min_obj)) = scene.cast_ray(u, v) {
-                scene.color_ray(intersect_point, &min_obj, y * canvas_width + x, &mut pixels);     
+            if let (intersect_point, Some(min_obj), ray) = scene.cast_ray(u, v) {
+                scene.color_ray(intersect_point, &min_obj, &ray, y * canvas_width + x, &mut pixels);     
             }
         }
     }
