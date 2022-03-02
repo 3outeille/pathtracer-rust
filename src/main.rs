@@ -91,28 +91,28 @@ fn main() {
         )
     );
 
-    // let blue = Rc::new(
-    //     UniformTexture::new(
-    //         1.0,
-    //         1.0,
-    //         1.0,
-    //         15.0,
-    //         0.3,
-    //         Vector3::new(0.3, 0.3, 0.8)
-    //     )
-    // );
-
-    // scene.add_object(
-    //     Rc::new(Sphere {
-    //         center: Vector3::new(2.0, -10.0, 13.0),
-    //         radius: 10.0,
-    //         textmat: blue.clone()
-    //     })
-    // );
+    let blue = Rc::new(
+        UniformTexture::new(
+            1.0,
+            1.0,
+            1.0,
+            15.0,
+            0.3,
+            Vector3::new(0.3, 0.3, 0.8)
+        )
+    );
 
     scene.add_object(
         Rc::new(Sphere {
-            center: Vector3::new(-0.75, 0.0, 7.0),
+            center: Vector3::new(2.0, -10.0, 13.0),
+            radius: 10.0,
+            textmat: blue.clone()
+        })
+    );
+
+    scene.add_object(
+        Rc::new(Sphere {
+            center: Vector3::new(-0.55, 0.0, 6.0),
             radius: 1.0,
             textmat: red.clone()
         })
