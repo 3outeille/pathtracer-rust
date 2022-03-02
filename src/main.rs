@@ -27,6 +27,8 @@ fn main() {
         1.0
     );
 
+    println!("widht = {} | height = {}", canvas_width, canvas_height);
+
     let mut scene = Scene::new(camera);
     
     // Create grid of balls
@@ -70,25 +72,63 @@ fn main() {
     let red  = Rc::new(
         UniformTexture::new(
             1.0,
-            1.0,
+            1.5,
             1.0,
             15.0,
-            0.15,
+            0.3,
             Vector3::new(0.3, 0.1, 0.1)
         )
+    );
+    
+    let green  = Rc::new(
+        UniformTexture::new(
+            1.0,
+            1.5,
+            1.0,
+            15.0,
+            0.3,
+            Vector3::new(0.1, 0.3, 0.1)
+        )
+    );
+
+    // let blue = Rc::new(
+    //     UniformTexture::new(
+    //         1.0,
+    //         1.0,
+    //         1.0,
+    //         15.0,
+    //         0.3,
+    //         Vector3::new(0.3, 0.3, 0.8)
+    //     )
+    // );
+
+    // scene.add_object(
+    //     Rc::new(Sphere {
+    //         center: Vector3::new(2.0, -10.0, 13.0),
+    //         radius: 10.0,
+    //         textmat: blue.clone()
+    //     })
+    // );
+
+    scene.add_object(
+        Rc::new(Sphere {
+            center: Vector3::new(-0.75, 0.0, 7.0),
+            radius: 1.0,
+            textmat: red.clone()
+        })
     );
 
     scene.add_object(
         Rc::new(Sphere {
-            center: Vector3::new(0.0, 0.0, 7.0),
-            radius: 1.5,
-            textmat: red.clone()
+            center: Vector3::new(1.5, 0.0, 7.0),
+            radius: 1.0,
+            textmat: green.clone()
         })
     );
 
     scene.add_light(
         PointLight::new(
-            Vector3::new(0.0, 0.0, 0.0),
+            Vector3::new(0.0, 0.0, -0.0),
             1.5
         )
     );
@@ -100,12 +140,12 @@ fn main() {
             
             let u = x as f32 / canvas_width as f32;
             let v = y as f32 / canvas_height as f32;
-            let offset = y * canvas_width + x;
 
-            if let (intersect_point, Some(min_obj), ray) = scene.cast_ray(u, v) {
+            if let (intersect_point, Some(min_obj), ray) = scene.cast_ray(scene.camera.origin, u, v) {
                 
-                let pixel_color = scene.get_color_ray(intersect_point, &min_obj, &ray,0);     
+                let pixel_color = scene.get_color_ray(&intersect_point, &min_obj, &ray,0);     
                 
+                let offset = y * canvas_width + x;
                 pixels[offset * 3] = (255.0 * pixel_color.x)  as u8;
                 pixels[offset * 3 + 1] = (255.0 * pixel_color.y) as u8;
                 pixels[offset * 3 + 2] = (255.0 * pixel_color.z) as u8;

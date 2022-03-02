@@ -9,7 +9,7 @@ use { crate::texture_material::TextureMaterial, crate::ray::Ray };
 pub trait ObjectsTrait {
     fn intersects(&self, ray: &Ray) -> Option<f32>;
 
-    fn get_normal(&self, point: Vector3<f32>) -> Vector3<f32>;
+    fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32>;
 
     fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>);
 }
@@ -39,7 +39,7 @@ impl ObjectsTrait for Sphere {
         return Some(root);
     }
 
-    fn get_normal(&self, point: Vector3<f32>) -> Vector3<f32> {
+    fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32> {
         return point - self.center;
     }
 
