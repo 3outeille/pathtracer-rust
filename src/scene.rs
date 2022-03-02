@@ -57,11 +57,11 @@ impl Scene {
     pub fn color_ray(&self, intersection_point: Vector3<f32>, obj: &Rc<dyn ObjectsTrait>, ray: &Ray, offset: usize, pixels: &mut Vec<u8>) -> () {
         
         let normal = obj.get_normal(intersection_point).normalize();
-        let material_color = obj.get_texture(intersection_point);
+        let (ka, kd, ks, ns, material_color) = obj.get_texture();
 
+        let ambient = material_color;
         let mut diffuse = Vector3::<f32>::zeros();
         let mut specular = Vector3::<f32>::zeros();
-        let ambient = material_color * 0.9;
 
         for light in &self.lights {
 
@@ -74,12 +74,12 @@ impl Scene {
 
             specular = specular.add_scalar({
                 let reflection = (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
-                let dot_prod = light_dir.dot(&reflection).clamp(0.0, 1.0).powf(10.0);
+                let dot_prod = light_dir.dot(&reflection).clamp(0.0, 1.0).powf(ns);
                 light.intensity * dot_prod
             });
         }
         
-        let pixel_color = diffuse + specular + ambient;
+        let pixel_color = (ka * ambient) + (kd * diffuse) + (ks * specular);
 
         pixels[offset * 3] = (255.0 * pixel_color.x)  as u8;
         pixels[offset * 3 + 1] = (255.0 * pixel_color.y) as u8;
