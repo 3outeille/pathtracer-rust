@@ -11,7 +11,7 @@ pub trait ObjectsTrait {
 
     fn get_normal(&self, point: Vector3<f32>) -> Vector3<f32>;
 
-    fn get_texture(&self) -> (f32, f32, f32, f32, Vector3<f32>);
+    fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>);
 }
 
 pub struct Sphere {
@@ -43,7 +43,7 @@ impl ObjectsTrait for Sphere {
         return point - self.center;
     }
 
-    fn get_texture(&self) -> (f32, f32, f32, f32, Vector3<f32>) {
+    fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>) {
         return self.textmat.get_texture();
     }
 }

@@ -6,6 +6,8 @@ use nalgebra::Vector3;
 
 use crate::{camera::Camera, objects::{ObjectsTrait, self}, light::{PointLight, self}, Ray};
 
+const REFLECTION_DEPTH: i32 = 5;
+
 pub struct Scene {
     pub camera: Camera,
     pub objects: Vec<Rc<dyn ObjectsTrait>>,
@@ -54,11 +56,15 @@ impl Scene {
         return (intersection_point, min_obj, ray);
     }
 
-    pub fn color_ray(&self, intersection_point: Vector3<f32>, obj: &Rc<dyn ObjectsTrait>, ray: &Ray, offset: usize, pixels: &mut Vec<u8>) -> () {
-        
-        let normal = obj.get_normal(intersection_point).normalize();
-        let (ka, kd, ks, ns, material_color) = obj.get_texture();
+    pub fn get_color_ray(&self, intersection_point: Vector3<f32>, obj: &Rc<dyn ObjectsTrait>, ray: &Ray, depth: i32) -> Vector3<f32> {
 
+        let mut pixel_color = Vector3::<f32>::zeros();
+
+        let (ka, kd, ks, ns, reflectivity, material_color) = obj.get_texture();
+        let normal = obj.get_normal(intersection_point).normalize();
+        let reflection = (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
+
+        // Phong Model
         let ambient = material_color;
         let mut diffuse = Vector3::<f32>::zeros();
         let mut specular = Vector3::<f32>::zeros();
@@ -73,17 +79,24 @@ impl Scene {
             };
 
             specular = specular.add_scalar({
-                let reflection = (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
                 let dot_prod = light_dir.dot(&reflection).clamp(0.0, 1.0).powf(ns);
                 light.intensity * dot_prod
             });
         }
         
-        let pixel_color = (ka * ambient) + (kd * diffuse) + (ks * specular);
+        pixel_color += (ka * ambient) + (kd * diffuse) + (ks * specular);
 
-        pixels[offset * 3] = (255.0 * pixel_color.x)  as u8;
-        pixels[offset * 3 + 1] = (255.0 * pixel_color.y) as u8;
-        pixels[offset * 3 + 2] = (255.0 * pixel_color.z) as u8;
+        if depth >= REFLECTION_DEPTH {
+            return pixel_color;
+        }
+
+        let (reflected_intersection_point, min_obj, reflected_ray) = self.cast_ray(reflection.x, reflection.y);
+        
+        if min_obj.is_none() { 
+            return pixel_color; 
+        }
+        
+        return pixel_color + reflectivity * self.get_color_ray(reflected_intersection_point, &min_obj.unwrap(), &reflected_ray, depth + 1);
     }
 
 }
