@@ -17,7 +17,7 @@ use { crate::objects::*, crate::light::*, crate::scene::*, crate::camera::*, cra
 
 fn main() {
     let aspect_ratio = 16.0 / 9.0;
-    let canvas_width = 400_usize;
+    let canvas_width = 1280_usize;
     let canvas_height = (canvas_width as f32 / aspect_ratio) as usize;
 
     let camera = Camera::new(
@@ -32,42 +32,42 @@ fn main() {
     let mut scene = Scene::new(camera);
     
     // Create grid of balls
-    // let mut y = 1.0;
-    // let mut ks_arg = 1.0;
+    let mut y = 1.0;
+    let mut ks_arg = 0.3;
 
-    // for _ in 0..3 {
+    for _ in 0..3 {
 
-    //     let mut x = -2.45;
-    //     let mut ns_arg = 15.0;
+        let mut x = -2.45;
+        let mut ns_arg = 15.0;
 
-    //     for _ in 0..5 {
+        for _ in 0..5 {
 
-    //         let red  = Rc::new(
-    //             UniformTexture::new(
-    //                 1.0,
-    //                 1.0,
-    //                 ks_arg,
-    //                 ns_arg,
-    //                 0.1,
-    //                 Vector3::new(0.3, 0.1, 0.1)
-    //             )
-    //         );
+            let red  = Rc::new(
+                UniformTexture::new(
+                    1.0,
+                    1.0,
+                    ks_arg,
+                    ns_arg,
+                    0.3,
+                    Vector3::new(0.3, 0.1, 0.1)
+                )
+            );
 
-    //         scene.add_object(
-    //             Rc::new(Sphere {
-    //                 center: Vector3::new(x, y, 7.0),
-    //                 radius: 0.3,
-    //                 textmat: red.clone()
-    //             })
-    //         );
+            scene.add_object(
+                Rc::new(Sphere {
+                    center: Vector3::new(x, y, 7.0),
+                    radius: 0.3,
+                    textmat: red.clone()
+                })
+            );
     
-    //         x += 1.20;
-    //         ns_arg += 15.0;
-    //     }
+            x += 1.20;
+            ns_arg += 15.0;
+        }
 
-    //     y -= 1.0;
-    //     ks_arg += 2.0;
-    // }
+        y -= 1.0;
+        ks_arg += 2.0;
+    }
 
     let red  = Rc::new(
         UniformTexture::new(
@@ -80,16 +80,16 @@ fn main() {
         )
     );
     
-    let green  = Rc::new(
-        UniformTexture::new(
-            1.0,
-            1.5,
-            1.0,
-            15.0,
-            0.3,
-            Vector3::new(0.1, 0.3, 0.1)
-        )
-    );
+    // let green  = Rc::new(
+    //     UniformTexture::new(
+    //         1.0,
+    //         1.5,
+    //         1.0,
+    //         15.0,
+    //         0.3,
+    //         Vector3::new(0.1, 0.3, 0.1)
+    //     )
+    // );
 
     let blue = Rc::new(
         UniformTexture::new(
@@ -103,33 +103,33 @@ fn main() {
     );
 
     scene.add_object(
-        Rc::new(Sphere {
-            center: Vector3::new(2.0, -10.0, 13.0),
-            radius: 10.0,
+        Rc::new(Plane {
+            center: Vector3::new(0.0, 0.0, 10.0),
+            normal: Vector3::new(0.0, 0.0, -1.0),
             textmat: blue.clone()
         })
     );
 
-    scene.add_object(
-        Rc::new(Sphere {
-            center: Vector3::new(-1.0, 0.0, 7.0),
-            radius: 1.0,
-            textmat: red.clone()
-        })
-    );
+    // scene.add_object(
+    //     Rc::new(Sphere {
+    //         center: Vector3::new(-1.0, 0.0, 7.0),
+    //         radius: 1.0,
+    //         textmat: red.clone()
+    //     })
+    // );
 
-    scene.add_object(
-        Rc::new(Sphere {
-            center: Vector3::new(1.0, 0.0, 7.0),
-            radius: 1.0,
-            textmat: green.clone()
-        })
-    );
+    // scene.add_object(
+    //     Rc::new(Sphere {
+    //         center: Vector3::new(1.0, 0.0, 7.0),
+    //         radius: 1.0,
+    //         textmat: green.clone()
+    //     })
+    // );
 
     scene.add_light(
         PointLight::new(
-            Vector3::new(1.0, 3.0, 2.0),
-            1.5
+            Vector3::new(0.0, 0.0, 2.0),
+            0.5
         )
     );
 

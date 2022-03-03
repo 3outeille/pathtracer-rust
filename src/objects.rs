@@ -47,3 +47,32 @@ impl ObjectsTrait for Sphere {
         return self.textmat.get_texture();
     }
 }
+pub struct Plane {
+    pub center: Vector3<f32>,
+    pub normal: Vector3<f32>,
+    pub textmat: Rc<dyn TextureMaterial>
+}
+
+impl ObjectsTrait for Plane {
+    
+    fn intersects(&self, ray: &Ray) -> Option<f32> {
+        
+        let denom = (-self.normal).dot(&ray.direction);
+
+        if denom > 1e-6 {
+            let a= self.center - ray.origin;
+            let t = a.dot(&-self.normal) / denom;
+            return Some(t);
+        }
+
+        return None;
+    }
+
+    fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32> {
+        return self.normal
+    }
+    
+    fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>) {
+        return self.textmat.get_texture();
+    }
+}

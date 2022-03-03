@@ -84,6 +84,12 @@ impl Scene {
                 let dot_prod = light_dir.dot(&reflection).clamp(0.0, 1.0).powf(ns);
                 light.intensity * dot_prod
             });
+            
+            let shadow_ray = Ray::new(intersection_point.unwrap() + (normal * EPSILON), light_dir);
+
+            if let (Some(shadow_intersection_point), new_obj) = self.cast_ray(&shadow_ray) {
+                return pixel_color + (ka * ambient);
+            }
         }
 
         pixel_color += (ka * ambient) + (kd * diffuse) + (ks * specular);
