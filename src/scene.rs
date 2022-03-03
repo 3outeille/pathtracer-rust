@@ -33,10 +33,7 @@ impl Scene {
         self.lights.push(light)
     }
 
-    pub fn cast_ray(&self, origin: Vector3<f32>, u: f32, v: f32) -> (Option<Vector3<f32>>, Option<Rc<dyn ObjectsTrait>>, Ray) {
-        let target = self.camera.top_left_start + u * self.camera.x_axis - v * self.camera.y_axis;
-        let ray = Ray::new(origin, (target - origin).normalize());
-
+    pub fn cast_ray(&self, ray: &Ray) -> (Option<Vector3<f32>>, Option<Rc<dyn ObjectsTrait>>) {
         let mut min_t = std::f32::MAX;
         let mut min_obj: Option<Rc<dyn ObjectsTrait>>= None;
 
@@ -54,7 +51,7 @@ impl Scene {
 
         let intersection_point = if min_t != std::f32::MAX { Some(ray.at(min_t)) } else { None };
 
-        return (intersection_point, min_obj, ray);
+        return (intersection_point, min_obj);
     }
 
     pub fn get_color_ray(&self, intersection_point: &Option<Vector3<f32>>, obj: &Rc<dyn ObjectsTrait>, ray: &Ray, depth: i32) -> Vector3<f32> {
@@ -65,7 +62,7 @@ impl Scene {
             return pixel_color;
         }
 
-        let (ka, kd, ks, ns, reflectivity, material_color) = obj.get_texture();
+        let (ka, kd, ks, ns, kr, material_color) = obj.get_texture();
         let normal = obj.get_normal(&intersection_point.unwrap()).normalize();
         let reflection = (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
 
@@ -88,7 +85,7 @@ impl Scene {
                 light.intensity * dot_prod
             });
         }
-        
+
         pixel_color += (ka * ambient) + (kd * diffuse) + (ks * specular);
 
         if depth >= REFLECTION_DEPTH {
@@ -98,12 +95,17 @@ impl Scene {
         // When casting rays using previous intersection point, ray may hit under the surface
         // due to numerical precision of the intersection point calculation (discriminant).
         // The more rays are casted using previous intersection point, the more the error accumulate.
-        let (reflected_intersection_point, new_obj, reflected_ray) = self.cast_ray(intersection_point.unwrap() + (normal * EPSILON), reflection.x, reflection.y);
+        let reflected_ray = Ray::new(intersection_point.unwrap() + (normal * EPSILON), reflection);
+        let (reflected_intersection_point, new_obj) = self.cast_ray(&reflected_ray);
         
         if new_obj.is_none() { 
             return pixel_color; 
         }
-        
-        return pixel_color + reflectivity * self.get_color_ray(&reflected_intersection_point, &new_obj.unwrap(), &reflected_ray, depth + 1);
+
+        let reflection = self.get_color_ray(&reflected_intersection_point, &new_obj.unwrap(), &reflected_ray, depth + 1);
+
+        pixel_color += kr * reflection;
+
+        return pixel_color; 
     }
 }

@@ -17,7 +17,7 @@ use { crate::objects::*, crate::light::*, crate::scene::*, crate::camera::*, cra
 
 fn main() {
     let aspect_ratio = 16.0 / 9.0;
-    let canvas_width = 720_usize;
+    let canvas_width = 400_usize;
     let canvas_height = (canvas_width as f32 / aspect_ratio) as usize;
 
     let camera = Camera::new(
@@ -128,7 +128,7 @@ fn main() {
 
     scene.add_light(
         PointLight::new(
-            Vector3::new(0.0, 0.0, 0.0),
+            Vector3::new(1.0, 3.0, 2.0),
             1.5
         )
     );
@@ -140,9 +140,12 @@ fn main() {
             
             let u = x as f32 / canvas_width as f32;
             let v = y as f32 / canvas_height as f32;
+            
+            let target = scene.camera.top_left_start + u * scene.camera.x_axis - v * scene.camera.y_axis;
+            let ray = Ray::new(scene.camera.origin, (target - scene.camera.origin).normalize());
 
-            if let (intersect_point, Some(min_obj), ray) = scene.cast_ray(scene.camera.origin, u, v) {
-                
+            if let (intersect_point, Some(min_obj)) = scene.cast_ray(&ray) {
+
                 let pixel_color = scene.get_color_ray(&intersect_point, &min_obj, &ray,0);     
                 
                 let offset = y * canvas_width + x;
@@ -151,6 +154,7 @@ fn main() {
                 pixels[offset * 3 + 2] = (255.0 * pixel_color.z) as u8;
             }
         }
+
     }
 
     write_image("output.png", &pixels, canvas_width, canvas_height).expect("error writing image");
