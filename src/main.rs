@@ -22,7 +22,7 @@ fn main() {
     let canvas_height = 720_usize;
 
     let camera = Camera::new(
-        Vector3::new(0.0, 0.0, -1.0),
+        Vector3::new(0.0, 0.0, 0.0),
         Vector3::new(0.0, 0.0, z_min),
         Vector3::new(0.0, 1.0, 0.0),
         90.0,
@@ -73,6 +73,15 @@ fn main() {
             center: Vector3::new(0.0, -3.0, 10.0),
             normal: Vector3::new(0.0, 1.0, 0.0),
             textmat: blue.clone()
+        })
+    );
+
+    // Background
+    scene.add_object(
+        Rc::new(Plane {
+            center: Vector3::new(0.0, -3.0, 20.0),
+            normal: Vector3::new(0.0, 0.0, -1.0),
+            textmat: red.clone()
         })
     );
 

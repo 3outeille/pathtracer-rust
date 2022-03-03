@@ -87,8 +87,12 @@ impl Scene {
             
             let shadow_ray = Ray::new(intersection_point.unwrap() + (normal * EPSILON), light_dir);
 
-            if let (Some(shadow_intersection_point), new_obj) = self.cast_ray(&shadow_ray) {
-                return pixel_color + (ka * ambient);
+            if let (Some(intersect_point_towards_light), new_obj) = self.cast_ray(&shadow_ray) {
+                
+                // Hit object towards light must be in-between the intial intersection point and the light.
+                if (intersect_point_towards_light - intersection_point.unwrap()).magnitude_squared() < (light.position - intersection_point.unwrap()).magnitude_squared() {
+                    return pixel_color + (ka * ambient);
+                }
             }
         }
 
