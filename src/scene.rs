@@ -33,14 +33,14 @@ impl Scene {
         self.lights.push(light)
     }
 
-    pub fn cast_ray(&self, ray: &Ray) -> (Option<Vector3<f32>>, Option<Rc<dyn ObjectsTrait>>) {
+    pub fn cast_ray(&self, ray: &Ray, near_clipping_range: f32, far_clipping_range: f32) -> (Option<Vector3<f32>>, Option<Rc<dyn ObjectsTrait>>) {
         let mut min_t = std::f32::MAX;
         let mut min_obj: Option<Rc<dyn ObjectsTrait>>= None;
 
         for object in &self.objects {
 
             // Find the nearest root.
-            match object.intersects(&ray) {
+            match object.intersects(&ray, near_clipping_range, far_clipping_range) {
                 Some(t) if (t < min_t) =>  {
                     min_obj = Some(object.clone());
                     min_t = t;
@@ -87,7 +87,7 @@ impl Scene {
             
             let shadow_ray = Ray::new(intersection_point.unwrap() + (normal * EPSILON), light_dir);
 
-            if let (Some(intersect_point_towards_light), new_obj) = self.cast_ray(&shadow_ray) {
+            if let (Some(intersect_point_towards_light), new_obj) = self.cast_ray(&shadow_ray, self.camera.near_clipping_range, self.camera.far_clipping_range) {
                 
                 // Hit object towards light must be in-between the intial intersection point and the light.
                 if (intersect_point_towards_light - intersection_point.unwrap()).magnitude_squared() < (light.position - intersection_point.unwrap()).magnitude_squared() {
@@ -106,7 +106,7 @@ impl Scene {
         // due to numerical precision of the intersection point calculation (discriminant).
         // The more rays are casted using previous intersection point, the more the error accumulate.
         let reflected_ray = Ray::new(intersection_point.unwrap() + (normal * EPSILON), reflection);
-        let (reflected_intersection_point, new_obj) = self.cast_ray(&reflected_ray);
+        let (reflected_intersection_point, new_obj) = self.cast_ray(&reflected_ray, self.camera.near_clipping_range, self.camera.far_clipping_range);
         
         if new_obj.is_none() { 
             return pixel_color; 

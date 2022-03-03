@@ -17,16 +17,18 @@ use { crate::objects::*, crate::light::*, crate::scene::*, crate::camera::*, cra
 
 fn main() {
     let aspect_ratio = 16.0 / 9.0;
-    let z_min = 1.0;
+    let near_clipping_range = 1.0;
+    let far_clipping_range = 100.0;
     let canvas_width = 1280_usize;
     let canvas_height = 720_usize;
 
     let camera = Camera::new(
-        Vector3::new(0.0, 0.0, 0.0),
-        Vector3::new(0.0, 0.0, z_min),
+        Vector3::new(0.0, 1.0, -2.0),
+        Vector3::new(0.0, 0.0, near_clipping_range),
         Vector3::new(0.0, 1.0, 0.0),
         90.0,
-        z_min,
+        near_clipping_range,
+        far_clipping_range,
         aspect_ratio
     );
 
@@ -40,7 +42,7 @@ fn main() {
             1.5,
             1.0,
             15.0,
-            0.3,
+            0.0,
             Vector3::new(0.3, 0.1, 0.1)
         )
     );
@@ -62,7 +64,7 @@ fn main() {
             1.0,
             1.0,
             15.0,
-            0.3,
+            0.0,
             Vector3::new(0.3, 0.3, 0.8)
         )
     );
@@ -70,7 +72,7 @@ fn main() {
     // Ground
     scene.add_object(
         Rc::new(Plane {
-            center: Vector3::new(0.0, -3.0, 10.0),
+            center: Vector3::new(0.0, -6.0, 10.0),
             normal: Vector3::new(0.0, 1.0, 0.0),
             textmat: blue.clone()
         })
@@ -79,7 +81,7 @@ fn main() {
     // Background
     scene.add_object(
         Rc::new(Plane {
-            center: Vector3::new(0.0, -3.0, 20.0),
+            center: Vector3::new(0.0, 0.0, 50.0),
             normal: Vector3::new(0.0, 0.0, -1.0),
             textmat: red.clone()
         })
@@ -87,7 +89,7 @@ fn main() {
 
     scene.add_object(
         Rc::new(Sphere {
-            center: Vector3::new(-1.0, 0.0, 5.0),
+            center: Vector3::new(-1.0, -2.0, 5.0),
             radius: 1.0,
             textmat: green.clone()
         })
@@ -95,7 +97,7 @@ fn main() {
 
     scene.add_object(
         Rc::new(Sphere {
-            center: Vector3::new(1.0, 0.0, 5.0),
+            center: Vector3::new(1.0, -2.0, 5.0),
             radius: 1.0,
             textmat: green.clone()
         })
@@ -119,7 +121,7 @@ fn main() {
             let target = scene.camera.top_left_start + u * scene.camera.right - v * scene.camera.up;
             let ray = Ray::new(scene.camera.origin, (target - scene.camera.origin).normalize());
 
-            if let (intersect_point, Some(min_obj)) = scene.cast_ray(&ray) {
+            if let (intersect_point, Some(min_obj)) = scene.cast_ray(&ray, scene.camera.near_clipping_range, scene.camera.far_clipping_range) {
 
                 let pixel_color = scene.get_color_ray(&intersect_point, &min_obj, &ray,0);     
                 

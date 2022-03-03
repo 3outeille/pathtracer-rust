@@ -7,7 +7,7 @@ use nalgebra::Vector3;
 use { crate::texture_material::TextureMaterial, crate::ray::Ray };
 
 pub trait ObjectsTrait {
-    fn intersects(&self, ray: &Ray) -> Option<f32>;
+    fn intersects(&self, ray: &Ray, near_clipping_range: f32, far_clipping_range: f32) -> Option<f32>;
 
     fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32>;
 
@@ -22,7 +22,7 @@ pub struct Sphere {
 
 impl ObjectsTrait for Sphere {
 
-    fn intersects(&self, ray: &Ray) -> Option<f32> {
+    fn intersects(&self, ray: &Ray, near_clipping_range: f32, far_clipping_range: f32) -> Option<f32> {
         let oc = ray.origin - self.center;
 
         let a = ray.direction.dot(&ray.direction);
@@ -32,10 +32,14 @@ impl ObjectsTrait for Sphere {
 
         if discriminant < 0.0 { return None; }
         
-        let root = (-b - discriminant.sqrt()) / (2.0 * a);
+        let mut root = (-b - discriminant.sqrt()) / (2.0 * a);
 
-        if root < 0.0 { return None; }
-
+        if root < near_clipping_range || root > far_clipping_range {
+            root =  (-b + discriminant.sqrt()) / (2.0 * a);
+            if root < near_clipping_range || root > far_clipping_range {
+                return None;
+            }
+        }
         return Some(root);
     }
 
@@ -55,19 +59,21 @@ pub struct Plane {
 
 impl ObjectsTrait for Plane {
     
-    fn intersects(&self, ray: &Ray) -> Option<f32> {
+    fn intersects(&self, ray: &Ray, near_clipping_range: f32, far_clipping_range: f32) -> Option<f32> {
         
         let denom = (-self.normal).dot(&ray.direction);
 
-        if denom > 1e-6 {
-            let t = (self.center - ray.origin).dot(&-self.normal) / denom;
-            if t < 0.0 {
-                return None;
-            }
-            return Some(t);
+        if denom <= 1e-6 {
+            return None;
         }
 
-        return None;
+        let t = (self.center - ray.origin).dot(&-self.normal) / denom;
+        
+        if t < near_clipping_range || t > far_clipping_range {
+            return None;
+        }
+
+        return Some(t);
     }
 
     fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32> {
