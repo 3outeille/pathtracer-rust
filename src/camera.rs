@@ -7,33 +7,35 @@ use crate::ray::Ray;
 
 pub struct Camera {
     pub origin: Vector3<f32>,
-    pub x_axis: Vector3<f32>,
-    pub y_axis: Vector3<f32>,
-    pub z_axis: Vector3<f32>,
-    pub fov_x: f32, // horizontal field of view
+    pub forward: Vector3<f32>,
+    pub up: Vector3<f32>,
+    pub right: Vector3<f32>,
+    pub viewport_width: f32,
+    pub viewport_height: f32,
     pub top_left_start: Vector3<f32>,
 }
 
 impl Camera {
-    pub fn new(origin_arg: Vector3<f32>, fov_x_arg: f32, aspect_ratio_arg: f32, focal_distance_arg: f32) -> Self {
-
-        let fov_x = ((fov_x_arg * 0.5) / 180.0) * PI; // radian
-        let viewport_width = 2.0 * fov_x.tan() * focal_distance_arg;
-        let viewport_height = viewport_width / aspect_ratio_arg;
+    pub fn new(origin_arg: Vector3<f32>, tartget_arg: Vector3<f32>, up_arg: Vector3<f32>, fov_x_arg: f32, z_min: f32, aspect_ratio: f32) -> Self {
 
         let origin = origin_arg;
-        let x_axis = Vector3::new(viewport_width, 0.0, 0.0); // right
-        let y_axis = Vector3::new(0.0, viewport_height, 0.0); // up
-        let z_axis = x_axis.cross(&y_axis);  // depth
+        let forward = (tartget_arg - origin_arg).normalize();
+        let up = up_arg.normalize();
+        let right = up.cross(&forward);
 
-        let top_left_start = origin - x_axis/2.0 + y_axis/2.0 + z_axis;
+        let fov_x = ((fov_x_arg * 0.5) / 180.0) * PI; // radian
+        let viewport_width = 2.0 * z_min * fov_x.tan();
+        let viewport_height = viewport_width / aspect_ratio;
+
+        let top_left_start = origin + (forward * z_min) - ((viewport_width/2.0)*right) + ((viewport_height/2.0) * up);
 
         Self {
             origin,
-            x_axis,
-            y_axis,
-            z_axis,
-            fov_x,
+            forward,
+            up,
+            right,
+            viewport_width,
+            viewport_height,
             top_left_start,
         }
     }

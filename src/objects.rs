@@ -60,8 +60,10 @@ impl ObjectsTrait for Plane {
         let denom = (-self.normal).dot(&ray.direction);
 
         if denom > 1e-6 {
-            let a= self.center - ray.origin;
-            let t = a.dot(&-self.normal) / denom;
+            let t = (self.center - ray.origin).dot(&-self.normal) / denom;
+            if t < 0.0 {
+                return None;
+            }
             return Some(t);
         }
 
