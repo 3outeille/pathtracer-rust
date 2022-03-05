@@ -12,8 +12,9 @@ mod scene;
 mod camera;
 mod texture_material;
 mod ray;
+mod engine;
 
-use { crate::objects::*, crate::light::*, crate::scene::*, crate::camera::*, crate::texture_material::*, crate::utils::*, crate::ray::* };
+use { crate::objects::*, crate::light::*, crate::scene::*, crate::camera::*, crate::texture_material::*, crate::utils::*, crate::ray::*, crate::engine::*};
 
 fn main() {
     let aspect_ratio = 16.0 / 9.0;
@@ -35,7 +36,7 @@ fn main() {
 
     println!("{}x{}", canvas_width, canvas_height);
 
-    let mut scene = Scene::new(camera);
+    let mut scene = Scene::new(camera, canvas_width, canvas_height);
 
     let red  = Rc::new(
         UniformTexture::new(
@@ -129,30 +130,6 @@ fn main() {
         )
     );
 
-    let mut pixels = vec![0; canvas_width * canvas_height * 3];
-
-    for j in 0..canvas_height {
-        for i in 0..canvas_width {
-            
-            let u = (i as f32 * scene.camera.viewport_width) / (canvas_width - 1) as f32;
-            let v = (j as f32 * scene.camera.viewport_height) / (canvas_height - 1) as f32;
-            
-            let target = scene.camera.top_left_start + u * scene.camera.right - v * scene.camera.up;
-            let ray = Ray::new(scene.camera.origin, (target - scene.camera.origin).normalize());
-
-            if let (intersect_point, Some(min_obj)) = scene.cast_ray(&ray, scene.camera.near_clipping_range, scene.camera.far_clipping_range) {
-
-                let pixel_color = scene.get_color_ray(&intersect_point, &min_obj, &ray,0);     
-                
-                let offset = j * canvas_width + i;
-                pixels[offset * 3] = (255.0 * pixel_color.x)  as u8;
-                pixels[offset * 3 + 1] = (255.0 * pixel_color.y) as u8;
-                pixels[offset * 3 + 2] = (255.0 * pixel_color.z) as u8;
-            }
-        }
-
-    }
-
-    write_image("output.png", &pixels, canvas_width, canvas_height).expect("error writing image");
-
+    let pixels = Engine.render_scene(scene);
+    Engine.save_scene("output.png", &pixels, canvas_width, canvas_height).expect("error writing image");
 }

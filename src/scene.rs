@@ -13,15 +13,19 @@ pub struct Scene {
     pub camera: Camera,
     pub objects: Vec<Rc<dyn ObjectsTrait>>,
     pub lights: Vec<PointLight>,
+    pub canvas_width: usize,
+    pub canvas_height: usize
 }
 
 impl Scene {
     
-    pub fn new(camera: Camera) -> Self {
+    pub fn new(camera: Camera, canvas_width: usize, canvas_height: usize) -> Self {
         Self {
             camera,
             objects: Vec::new(), 
-            lights: Vec::new()
+            lights: Vec::new(),
+            canvas_width,
+            canvas_height
         }
     }
 
