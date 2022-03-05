@@ -1,7 +1,7 @@
 extern crate nalgebra;
 use std::f32::consts::PI;
 
-use nalgebra::{Vector3, Vector2};
+use nalgebra::{Vector3, Matrix3};
 
 use crate::ray::Ray;
 
@@ -45,5 +45,44 @@ impl Camera {
             viewport_height,
             top_left_start,
         }
+    }
+
+
+    pub fn rotate_around_up(&mut self, angle_degree: f32) -> () {
+
+        let angle_rad  = ((angle_degree * 0.5) / 180.0) * PI;
+
+        let ry = Matrix3::new(
+            angle_rad.cos(), 0.0,  (-angle_rad).sin(),
+            0.0            , 1.0,  0.0,
+            angle_rad.sin(), 0.0,  angle_rad.cos()
+        );
+
+        self.up = ry * self.up;
+
+    }
+
+    pub fn rotate_around_forward(&mut self, angle_degree: f32) -> () {
+        let angle_rad  = ((angle_degree * 0.5) / 180.0) * PI;
+
+        let rz = Matrix3::new(
+            angle_rad.cos()   , (angle_rad).sin(),  0.0,
+            (-angle_rad).sin(), angle_rad.cos()  ,  0.0,  
+            0.0               , 0.0              ,  1.0,
+        );
+
+        self.forward = rz * self.forward;
+    }
+
+    pub fn rotate_around_right(&mut self, angle_degree: f32) -> () {
+        let angle_rad  = ((angle_degree * 0.5) / 180.0) * PI;
+
+        let rx = Matrix3::new(
+            1.0               , 0.0              ,  0.0,
+            0.0               , angle_rad.cos()   , (angle_rad).sin(),
+            0.0               , (-angle_rad).sin(), angle_rad.cos()
+        );
+
+        self.right = rx * self.right;
     }
 }
