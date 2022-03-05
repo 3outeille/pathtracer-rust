@@ -154,4 +154,5 @@ fn main() {
     }
 
     write_image("output.png", &pixels, canvas_width, canvas_height).expect("error writing image");
+
 }

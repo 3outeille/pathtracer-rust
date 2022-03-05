@@ -47,42 +47,43 @@ impl Camera {
         }
     }
 
-
     pub fn rotate_around_up(&mut self, angle_degree: f32) -> () {
 
-        let angle_rad  = ((angle_degree * 0.5) / 180.0) * PI;
+        let angle_rad  = (angle_degree / 180.0) * PI;
 
-        let ry = Matrix3::new(
+        let rotation_mat = Matrix3::new(
             angle_rad.cos(), 0.0,  (-angle_rad).sin(),
             0.0            , 1.0,  0.0,
             angle_rad.sin(), 0.0,  angle_rad.cos()
         );
 
-        self.up = ry * self.up;
-
+        self.right = (rotation_mat * self.right).normalize();
+        self.forward = (rotation_mat * self.forward).normalize();
     }
 
     pub fn rotate_around_forward(&mut self, angle_degree: f32) -> () {
-        let angle_rad  = ((angle_degree * 0.5) / 180.0) * PI;
+        let angle_rad  = (angle_degree / 180.0) * PI;
 
-        let rz = Matrix3::new(
-            angle_rad.cos()   , (angle_rad).sin(),  0.0,
+        let rotation_mat = Matrix3::new(
+            angle_rad.cos()   , angle_rad.sin(),  0.0,
             (-angle_rad).sin(), angle_rad.cos()  ,  0.0,  
             0.0               , 0.0              ,  1.0,
         );
 
-        self.forward = rz * self.forward;
+        self.up = rotation_mat * self.up;
+        self.right = rotation_mat * self.right;
     }
 
     pub fn rotate_around_right(&mut self, angle_degree: f32) -> () {
-        let angle_rad  = ((angle_degree * 0.5) / 180.0) * PI;
+        let angle_rad  = (angle_degree / 180.0) * PI;
 
-        let rx = Matrix3::new(
+        let rotation_mat = Matrix3::new(
             1.0               , 0.0              ,  0.0,
-            0.0               , angle_rad.cos()   , (angle_rad).sin(),
+            0.0               , angle_rad.cos()   , angle_rad.sin(),
             0.0               , (-angle_rad).sin(), angle_rad.cos()
         );
 
-        self.right = rx * self.right;
+        self.up = rotation_mat * self.up;
+        self.forward = rotation_mat * self.forward;
     }
 }
