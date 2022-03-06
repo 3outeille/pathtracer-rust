@@ -6,7 +6,7 @@ use std::{fs::{File, self}, path::Path, f32::INFINITY, rc::Rc, collections::Hash
 use image::png::PNGEncoder;
 // use fltk::{app, button::Button, frame::Frame, prelude::*, window::Window};
 
-use crate::{camera::Camera, texture_material::UniformTexture, objects::{Sphere, Plane}, light::PointLight};
+use crate::{camera::Camera, texture_material::UniformTexture, objects::{Sphere, Plane, Triangle}, light::PointLight};
 
 use {crate::scene::*, crate::ray::*};
 
@@ -129,6 +129,27 @@ impl Engine {
                                 object["normal"][0].as_f64().unwrap() as f32,
                                 object["normal"][1].as_f64().unwrap() as f32,
                                 object["normal"][2].as_f64().unwrap() as f32
+                            ),
+                            textmat: textures_map[object["textmat"].as_str().unwrap()].clone()
+                        })
+                    );
+                } else if object["metadata"]["type"].as_str().unwrap().eq("triangle") {
+                    scene.add_object(
+                        Rc::new(Triangle {
+                            v0: Vector3::new(
+                                object["v0"][0].as_f64().unwrap() as f32,
+                                object["v0"][1].as_f64().unwrap() as f32,
+                                object["v0"][2].as_f64().unwrap() as f32
+                            ),
+                            v1: Vector3::new(
+                                object["v1"][0].as_f64().unwrap() as f32,
+                                object["v1"][1].as_f64().unwrap() as f32,
+                                object["v1"][2].as_f64().unwrap() as f32
+                            ),
+                            v2: Vector3::new(
+                                object["v2"][0].as_f64().unwrap() as f32,
+                                object["v2"][1].as_f64().unwrap() as f32,
+                                object["v2"][2].as_f64().unwrap() as f32
                             ),
                             textmat: textures_map[object["textmat"].as_str().unwrap()].clone()
                         })

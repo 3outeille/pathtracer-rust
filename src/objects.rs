@@ -51,6 +51,7 @@ impl ObjectsTrait for Sphere {
         return self.textmat.get_texture();
     }
 }
+
 pub struct Plane {
     pub center: Vector3<f32>,
     pub normal: Vector3<f32>,
@@ -78,6 +79,60 @@ impl ObjectsTrait for Plane {
 
     fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32> {
         return self.normal
+    }
+    
+    fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>) {
+        return self.textmat.get_texture();
+    }
+}
+
+pub struct Triangle {
+    pub v0: Vector3<f32>,
+    pub v1: Vector3<f32>,
+    pub v2: Vector3<f32>,
+    pub textmat: Rc<dyn TextureMaterial>
+}
+
+impl ObjectsTrait for Triangle {
+    
+    fn intersects(&self, ray: &Ray, near_clipping_range: f32, far_clipping_range: f32) -> Option<f32> {
+        // Möller-Trumbore algorithm
+
+        let v0v1 = self.v1 - self.v0;
+        let v0v2 = self.v2 - self.v0;
+        let p = (ray.direction).cross(&v0v2);
+        let det = v0v1.dot(&p) as f32;
+
+        if det > -0.0000001 && det < 0.0000001 {
+            return None; // Ray is parallel to triangle.
+        }
+
+        let inv_det = 1.0 / det;
+        let s = ray.origin - self.v0;
+        let u = (s.dot(&p) * inv_det) as f32;
+
+        if u < 0.0 || u > 1.0 {
+            return None;
+        }
+        
+        let q = s.cross(&v0v1);
+        let v = (ray.direction).dot(&q) * inv_det;
+
+        if v < 0.0 || u + v > 1.0 {
+            return None;
+        }
+
+        let t = v0v2.dot(&q) * inv_det as f32;
+
+        if t < near_clipping_range || t > far_clipping_range {
+            return None;
+        }
+
+        return Some(t);
+    }
+
+    fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32> {
+        return  (self.v1 - self.v0).cross(&(self.v2 - self.v0));
     }
     
     fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>) {
