@@ -6,6 +6,8 @@ use nalgebra::Vector3;
 
 use { crate::texture_material::TextureMaterial, crate::ray::Ray };
 
+const EPSILON: f32 = 1e-6;
+
 pub trait ObjectsTrait {
     fn intersects(&self, ray: &Ray, near_clipping_range: f32, far_clipping_range: f32) -> Option<f32>;
 
@@ -64,7 +66,7 @@ impl ObjectsTrait for Plane {
         
         let denom = (-self.normal).dot(&ray.direction);
 
-        if denom <= 1e-6 {
+        if denom <= EPSILON {
             return None;
         }
 
@@ -103,7 +105,7 @@ impl ObjectsTrait for Triangle {
         let p = (ray.direction).cross(&v0v2);
         let det = v0v1.dot(&p) as f32;
 
-        if det > -0.0000001 && det < 0.0000001 {
+        if det > -EPSILON && det < EPSILON {
             return None; // Ray is parallel to triangle.
         }
 
