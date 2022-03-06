@@ -1,40 +1,74 @@
 
 use image::ColorType;
 use nalgebra::Vector3;
-use std::{fs::File, path::Path, f32::INFINITY, rc::Rc};
+use serde_json::Value;
+use std::{fs::{File, self}, path::Path, f32::INFINITY, rc::Rc, collections::HashMap};
 use image::png::PNGEncoder;
-use fltk::{app, button::Button, frame::Frame, prelude::*, window::Window};
+// use fltk::{app, button::Button, frame::Frame, prelude::*, window::Window};
 
 use crate::{camera::Camera, texture_material::UniformTexture, objects::{Sphere, Plane}, light::PointLight};
 
 use {crate::scene::*, crate::ray::*};
-
-
-#[derive(Serialize, Deserialize)]
-struct SomeDataType {}
 
 pub struct Engine;
 
 impl Engine {
     
     pub fn parse_scene(&self, filename: &str) -> Result<Scene, std::io::Error> {
-        let json_file_path = Path::new(filename);
-        let json_file = File::open(json_file_path).expect("file not found");
-        let deserialized_camera: SomeDataType =
-            serde_json::from_reader(json_file).expect("error while reading json");
+        // TODO: clean code to make it more rustacean.
+
+        let data = fs::read_to_string(filename).expect("Unable to read file");
+        let res: Value = serde_json::from_str(&data).expect("Unable to parse");
+
+        let origin = Vector3::new(
+            res["camera"]["origin"][0].as_f64().unwrap() as f32,
+            res["camera"]["origin"][1].as_f64().unwrap() as f32,
+            res["camera"]["origin"][2].as_f64().unwrap() as f32
+        );
         
-        let aspect_ratio = 16.0 / 9.0;
-        let up = Vector3::new(0.0, 1.0, 0.0);
-        let near_clipping_range = 0.5;
-        let far_clipping_range = INFINITY;    
+        let target = Vector3::new(
+            res["camera"]["target"][0].as_f64().unwrap() as f32,
+            res["camera"]["target"][1].as_f64().unwrap() as f32,
+            res["camera"]["target"][2].as_f64().unwrap() as f32
+        );
+
+        let up = Vector3::new(
+            res["camera"]["up"][0].as_f64().unwrap() as f32,
+            res["camera"]["up"][1].as_f64().unwrap() as f32,
+            res["camera"]["up"][2].as_f64().unwrap() as f32
+        );
+
+        let fov_x: f32;
+        if let Some(field) = res["camera"].get("fov_x") {
+            fov_x = field.as_f64().unwrap() as f32;
+        } else {
+            fov_x = 90.0;
+        }
+        
+        let near_clipping_range: f32;
+        if let Some(field) = res["camera"].get("near_clipping_range") {
+            near_clipping_range = field.as_f64().unwrap() as f32;
+        } else {
+            near_clipping_range = 1.0;
+        }
+        
+        let far_clipping_range: f32;
+        if let Some(field) = res["camera"].get("far_clipping_range") {
+            far_clipping_range = field.as_f64().unwrap() as f32;
+        } else {
+            far_clipping_range = INFINITY;
+        }
+
+        let aspect_ratio = (res["camera"]["aspect_ratio_num"].as_f64().unwrap() / res["camera"]["aspect_ratio_den"].as_f64().unwrap()) as f32;
+
         let canvas_width = 1280_usize;
         let canvas_height = (canvas_width as f32 / aspect_ratio) as usize;
-    
+
         let camera = Camera::new(
-            Vector3::new(1.5, -0.1, -0.5),
-            Vector3::new(0.5, 0.0, 1.0),
+            origin,
+            target,
             up,
-            130.0,
+            fov_x,
             near_clipping_range,
             far_clipping_range,
             aspect_ratio
@@ -43,98 +77,79 @@ impl Engine {
         println!("{}x{}", canvas_width, canvas_height);
         
         let mut scene = Scene::new(camera, canvas_width, canvas_height);
-
-        let red  = Rc::new(
-            UniformTexture::new(
-                1.0,
-                1.5,
-                1.0,
-                15.0,
-                0.3,
-                Vector3::new(0.3, 0.1, 0.1)
-            )
-        );
         
-        let green  = Rc::new(
-            UniformTexture::new(
-                1.0,
-                1.5,
-                1.0,
-                15.0,
-                0.3,
-                Vector3::new(0.1, 0.3, 0.1)
-            )
-        );
+        // Texture
+        let mut textures_map: HashMap<String, Rc<UniformTexture>> = HashMap::new();
 
-        let blue = Rc::new(
-            UniformTexture::new(
-                1.0,
-                1.0,
-                1.0,
-                15.0,
-                0.3,
-                Vector3::new(0.3, 0.3, 0.8)
-            )
-        );
+        for v in res["textures"].as_array().unwrap() {
+            let texture = v.as_object().unwrap();
+            textures_map.insert(
+                texture["metadata"]["type"].as_str().unwrap().to_owned(),
+                Rc::new(
+                    UniformTexture::new(
+                        texture["ka"].as_f64().unwrap() as f32,
+                        texture["kd"].as_f64().unwrap() as f32,
+                        texture["ks"].as_f64().unwrap() as f32,
+                        texture["ns"].as_f64().unwrap() as f32,
+                        texture["kr"].as_f64().unwrap() as f32,
+                        Vector3::new(
+                            texture["color"][0].as_f64().unwrap() as f32,
+                            texture["color"][1].as_f64().unwrap() as f32,
+                            texture["color"][2].as_f64().unwrap() as f32)
+                    )
+                )   
+            );
+        }
 
-        // Ground
-        // scene.add_object(
-        //     Rc::new(Plane {
-        //         center: Vector3::new(0.0, -6.0, 10.0),
-        //         normal: Vector3::new(0.0, 1.0, 0.0),
-        //         textmat: blue.clone()
-        //     })
-        // );
+        // Objects
+        for v in res["objects"].as_array().unwrap() {
+            let object = v.as_object().unwrap();
+            if object["metadata"].as_object().unwrap().contains_key("type") {
+                if object["metadata"]["type"].as_str().unwrap().eq("sphere") {
+                    scene.add_object(
+                        Rc::new(Sphere {
+                            center: Vector3::new(
+                                object["center"][0].as_f64().unwrap() as f32,
+                                object["center"][1].as_f64().unwrap() as f32,
+                                object["center"][2].as_f64().unwrap() as f32
+                            ),
+                            radius: object["radius"].as_f64().unwrap() as f32,
+                            textmat: textures_map[object["textmat"].as_str().unwrap()].clone()
+                        })
+                    );
+                } else if object["metadata"]["type"].as_str().unwrap().eq("plane") {
+                    scene.add_object(
+                        Rc::new(Plane {
+                            center: Vector3::new(
+                                object["center"][0].as_f64().unwrap() as f32,
+                                object["center"][1].as_f64().unwrap() as f32,
+                                object["center"][2].as_f64().unwrap() as f32
+                            ),
+                            normal: Vector3::new(
+                                object["normal"][0].as_f64().unwrap() as f32,
+                                object["normal"][1].as_f64().unwrap() as f32,
+                                object["normal"][2].as_f64().unwrap() as f32
+                            ),
+                            textmat: textures_map[object["textmat"].as_str().unwrap()].clone()
+                        })
+                    );
+                }
+            }
+        }
 
-        scene.add_object(
-            Rc::new(Sphere {
-                center: Vector3::new(0.0, -100.5, -1.0),
-                radius: 100.0,
-                textmat: blue.clone()
-            })
-        );
+        // Lights
+        for v in res["lights"].as_array().unwrap() {
+            let light = v.as_object().unwrap();
+            scene.add_light(PointLight::new(
+    Vector3::new(
+                    light["position"][0].as_f64().unwrap() as f32,
+                    light["position"][1].as_f64().unwrap() as f32,
+                    light["position"][2].as_f64().unwrap() as f32
+                ),
+    light["intensity"].as_f64().unwrap() as f32)       
+            );
+        }
 
-        // Right-Background
-        scene.add_object(
-            Rc::new(Plane {
-                center: Vector3::new(0.0, 0.0, 50.0),
-                normal: Vector3::new(0.0, 0.0, -1.0),
-                textmat: blue.clone()
-            })
-        );
-
-        // Left-Background
-        scene.add_object(
-            Rc::new(Plane {
-                center: Vector3::new(-50.0, 0.0, 50.0),
-                normal: Vector3::new(1.0, 0.0, 0.0),
-                textmat: blue.clone()
-            })
-        );
-
-
-        scene.add_object(
-            Rc::new(Sphere {
-                center: Vector3::new(0.0, 0.0, 1.0),
-                radius: 0.5,
-                textmat: red.clone()
-            })
-        );
-
-        scene.add_object(
-            Rc::new(Sphere {
-                center: Vector3::new(1.0, 0.0, 1.0),
-                radius: 0.5,
-                textmat: green.clone()
-            })
-        );
-
-        scene.add_light(
-            PointLight::new(
-                Vector3::new(1.0, 1.0, 0.5),
-                0.9
-            )
-        );
         return Ok(scene);
     }
 
@@ -167,14 +182,17 @@ impl Engine {
     }
 
     pub fn render_scene_realtime(&self) {
-        let app = app::App::default();
-        let mut wind = Window::new(100, 100, 400, 300, "Hello from rust");
-        let mut frame = Frame::new(0, 0, 400, 200, "");
-        let mut but = Button::new(160, 210, 80, 40, "Click me!");
-        wind.end();
-        wind.show();
-        but.set_callback(move |_| frame.set_label("Hello World!")); // the closure capture is mutable borrow to our button
-        app.run().unwrap();
+        // fltk = "1.2"
+
+        // let app = app::App::default();
+        // let mut wind = Window::new(100, 100, 400, 300, "Hello from rust");
+        // let mut frame = Frame::new(0, 0, 400, 200, "");
+        // let mut but = Button::new(160, 210, 80, 40, "Click me!");
+        // wind.end();
+        // wind.show();
+        // but.set_callback(move |_| frame.set_label("Hello World!")); // the closure capture is mutable borrow to our button
+        // app.run().unwrap();
+        todo!()
     }
 
     pub fn save_scene(&self, filename: &str, pixels: &[u8], width: usize, height: usize) -> Result<(), std::io::Error> {

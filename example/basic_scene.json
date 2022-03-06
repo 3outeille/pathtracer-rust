@@ -1,0 +1,99 @@
+{
+    "camera": {
+        "origin": [1.5, -0.1, -0.5],
+        "target": [0.5, 0.0, 1.0],
+        "up": [0.0, 1.0, 0.0],
+        "fov_x": 130.0,
+        "near_clipping_range": 0.5,
+        "aspect_ratio_num": 16.0,
+        "aspect_ratio_den": 9.0
+    },
+    "textures": [
+        {   
+            "metadata": {
+                "type": "red"
+            },
+            "ka": 1.0,
+            "kd": 1.5,
+            "ks": 1.0,
+            "ns": 15.0,
+            "kr": 0.3,
+            "color": [0.3, 0.1, 0.1]
+        },
+        {
+            "metadata": {
+                "type": "blue"
+            },
+            "ka": 1.0,
+            "kd": 1.5,
+            "ks": 1.0,
+            "ns": 15.0,
+            "kr": 0.3,
+            "color": [0.3, 0.3, 0.8]
+        },
+        {   
+            "metadata": {
+                "type": "green"
+            },
+            "ka": 1.0,
+            "kd": 1.5,
+            "ks": 1.0,
+            "ns": 15.0,
+            "kr": 0.3,
+            "color": [0.1, 0.3, 0.1]
+        }
+    ],
+    "objects": [
+        {
+            "metadata": {
+                "type": "sphere",
+                "name": "ground"
+            },
+            "center": [0.0, -100.5, -1.0],
+            "radius": 100.0,
+            "textmat": "blue"
+        },
+        {
+            "metadata": {
+                "type": "plane",
+                "name": "right-background"
+            },
+            "center": [0.0, 0.0, 50.0],
+            "normal": [0.0, 0.0, -1.0],
+            "textmat": "blue"
+        },
+        {
+            "metadata": {
+                "type": "plane",
+                "name": "left-background"
+            },
+            "center": [-50.0, 0.0, 50.0],
+            "normal": [1.0, 0.0, 0.0],
+            "textmat": "blue"
+        },
+        {
+            "metadata": {
+                "type": "sphere",
+                "name": "middle-sphere"
+            },
+            "center": [0.0, 0.0, 1.0],
+            "radius": 0.5,
+            "textmat": "red"
+        },
+        {
+            "metadata": {
+                "type": "sphere",
+                "name": "right-sphere"
+            },
+            "center": [1.0, 0.0, 1.0],
+            "radius": 0.5,
+            "textmat": "green"
+        }
+    ],
+    "lights": [
+        {
+            "position": [1.0, 1.0, 0.5],
+            "intensity": 0.9
+        }
+    ]
+}

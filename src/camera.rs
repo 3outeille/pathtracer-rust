@@ -18,11 +18,10 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(origin_arg: Vector3<f32>, tartget_arg: Vector3<f32>, up_arg: Vector3<f32>, fov_x_arg: f32, near_clipping_range_arg: f32, far_clipping_range_arg: f32, aspect_ratio: f32) -> Self {
-
+    pub fn new(origin_arg: Vector3<f32>, target_arg: Vector3<f32>, up_arg: Vector3<f32>, fov_x_arg: f32, near_clipping_range_arg: f32, far_clipping_range_arg: f32, aspect_ratio_arg: f32) -> Self {
         
         let origin = origin_arg;
-        let forward = (tartget_arg - origin_arg).normalize();
+        let forward = (target_arg - origin_arg).normalize();
         let up = up_arg.normalize();
         let right = up.cross(&forward);
         
@@ -30,7 +29,7 @@ impl Camera {
         let far_clipping_range = far_clipping_range_arg;
         let fov_x = ((fov_x_arg * 0.5) / 180.0) * PI; // radian
         let viewport_width = 2.0 * near_clipping_range * fov_x.tan();
-        let viewport_height = viewport_width / aspect_ratio;
+        let viewport_height = viewport_width / aspect_ratio_arg;
 
         let top_left_start = origin + (forward * near_clipping_range) - ((viewport_width/2.0)*right) + ((viewport_height/2.0) * up);
 
