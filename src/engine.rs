@@ -153,7 +153,7 @@ impl Engine {
         return Ok(scene);
     }
 
-    pub fn render_scene(&self, scene: Scene) -> Vec<u8> {
+    pub fn render_scene(&self, scene: &Scene) -> Vec<u8> {
         let mut pixels = vec![0; scene.canvas_width * scene.canvas_height * 3];
 
         for j in 0..scene.canvas_height {
@@ -195,10 +195,10 @@ impl Engine {
         todo!()
     }
 
-    pub fn save_scene(&self, filename: &str, pixels: &[u8], width: usize, height: usize) -> Result<(), std::io::Error> {
+    pub fn save_scene(&self, filename: &str, pixels: &[u8], width: &usize, height: &usize) -> Result<(), std::io::Error> {
         let output = File::create(filename)?;
         let encoder = PNGEncoder::new(output);
-        encoder.encode(pixels, width as u32, height as u32, ColorType::RGB(8))?;
+        encoder.encode(pixels, *width as u32, *height as u32, ColorType::RGB(8))?;
         return Ok(());
     }
 }
