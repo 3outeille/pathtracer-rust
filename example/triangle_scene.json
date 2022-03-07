@@ -5,6 +5,7 @@
         "up": [0.0, 1.0, 0.0],
         "fov_x": 130.0,
         "near_clipping_range": 0.5,
+        "canvas_width": 1280,
         "aspect_ratio_num": 16.0,
         "aspect_ratio_den": 9.0
     },

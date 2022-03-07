@@ -61,7 +61,7 @@ impl Engine {
 
         let aspect_ratio = (res["camera"]["aspect_ratio_num"].as_f64().unwrap() / res["camera"]["aspect_ratio_den"].as_f64().unwrap()) as f32;
 
-        let canvas_width = 1280_usize;
+        let canvas_width = res["camera"]["canvas_width"].as_f64().unwrap() as usize;
         let canvas_height = (canvas_width as f32 / aspect_ratio) as usize;
 
         let camera = Camera::new(
@@ -162,12 +162,12 @@ impl Engine {
         for v in res["lights"].as_array().unwrap() {
             let light = v.as_object().unwrap();
             scene.add_light(PointLight::new(
-    Vector3::new(
+                Vector3::new(
                     light["position"][0].as_f64().unwrap() as f32,
                     light["position"][1].as_f64().unwrap() as f32,
                     light["position"][2].as_f64().unwrap() as f32
                 ),
-    light["intensity"].as_f64().unwrap() as f32)       
+                light["intensity"].as_f64().unwrap() as f32)       
             );
         }
 
