@@ -11,8 +11,9 @@ mod camera;
 mod texture_material;
 mod ray;
 mod engine;
+mod mesh;
 
-use { crate::objects::*, crate::light::*, crate::scene::*, crate::camera::*, crate::texture_material::*, crate::ray::*, crate::engine::*};
+use { crate::objects::*, crate::light::*, crate::scene::*, crate::camera::*, crate::texture_material::*, crate::ray::*, crate::engine::*, crate::mesh::*};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -22,4 +23,11 @@ fn main() {
         let pixels = Engine.render_scene(&scene);
         Engine.save_scene("output.png", &pixels, &scene.canvas_width, &scene.canvas_height).expect("error writing image");
     }
+
+    scene.add_mesh(Rc::new( Mesh::new(
+    )
+    ));
+
+    Engine.render_blobs(&scene);
+
 }

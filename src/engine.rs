@@ -174,6 +174,14 @@ impl Engine {
         return Ok(scene);
     }
 
+    pub fn render_blobs(&self, scene: &Scene) -> () {
+        for mesh in scene.meshes {
+            for triangle in mesh.marching_cube() {
+                scene.add_object(triangle);
+            }
+        }
+    }
+
     pub fn render_scene(&self, scene: &Scene) -> Vec<u8> {
         let mut pixels = vec![0; scene.canvas_width * scene.canvas_height * 3];
 
