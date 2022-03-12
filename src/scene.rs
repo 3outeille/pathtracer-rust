@@ -4,14 +4,14 @@ use std::cmp::max;
 
 use nalgebra::Vector3;
 
-use crate::{camera::Camera, objects::{ObjectsTrait, self}, light::{PointLight, self}, Ray, Mesh};
+use crate::{camera::Camera, objects::{ObjectsTrait, self}, light::{PointLight, self}, Ray};
 
 const EPSILON: f32 = 1e-4;
 const REFLECTION_DEPTH: i32 = 5;
 
 pub struct Scene {
     pub camera: Camera,
-    pub meshes: Vec<Blob>,
+    // pub blobs: Vec<Blob>,
     pub objects: Vec<Rc<dyn ObjectsTrait>>,
     pub lights: Vec<PointLight>,
     pub canvas_width: usize,
@@ -23,7 +23,7 @@ impl Scene {
     pub fn new(camera: Camera, canvas_width: usize, canvas_height: usize) -> Self {
         Self {
             camera,
-            meshes: Vec::new(),
+            // blobs: Vec::new(),
             objects: Vec::new(), 
             lights: Vec::new(),
             canvas_width,
@@ -31,9 +31,9 @@ impl Scene {
         }
     }
 
-    pub fn add_mesh(&mut self, mesh: Mesh) -> () {
-        self.meshes.push(mesh);   
-    }
+    // pub fn add_blob(&mut self, blob: Blob) -> () {
+    //     self.blobs.push(mesh);   
+    // }
 
     pub fn add_object(&mut self, object: Rc<dyn ObjectsTrait>) -> () {
         self.objects.push(object);   

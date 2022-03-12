@@ -1,0 +1,88 @@
+camera:
+  origin: [1.5, -0.1, -0.5]
+  target: [0.0, 0.0, 1.0]
+  up: [0.0, 1.0, 0.0]
+  fov_x_deg: 130.0 # degree
+  near_clipping_range: 0.5
+  canvas_width: 1280
+  canvas_height: 720
+spheres:
+  # Ground
+  - center: [0.0, -100.5, -1.0]
+    radius: 100.0
+    textmat:
+      color: [0.3, 0.3, 0.8] # blue
+      surface:
+        ambient:
+          ka: 1.0
+        diffuse:
+          kd: 1.5
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0.3
+  # Middle-sphere
+  - center: [0.0, 0.0, 1.0]
+    radius: 0.5
+    textmat:
+      color: [0.3, 0.1, 0.1] # red
+      surface:
+        ambient:
+          ka: 1.0
+        diffuse:
+          kd: 1.5
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0.3
+  # Right sphere
+  - center: [1.0, 0.0, 1.0]
+    radius: 0.5
+    textmat:
+      color: [0.1, 0.3, 0.1] # green
+      surface:
+        ambient:
+          ka: 1.0
+        diffuse:
+          kd: 1.5
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0.3
+planes:
+  # Right background
+  - center: [0.0, 0.0, 50.0]
+    normal: [0.0, 0.0, -1.0]
+    textmat:
+      color: [0.3, 0.3, 0.8] # blue
+      surface:
+        ambient:
+          ka: 1.0
+        diffuse:
+          kd: 1.5
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0.3
+  # Left background
+  - center: [-50.0, 0.0, 50.0]
+    normal: [1.0, 0.0, 0.0]
+    textmat:
+      color: [0.3, 0.3, 0.8] # blue
+      surface:
+        ambient:
+          ka: 1.0
+        diffuse:
+          kd: 1.5
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0.3
+lights:
+  - position: [1.0, 1.0, 0.5]
+    intensity: 0.9

@@ -1,50 +1,53 @@
 extern crate nalgebra;
-use std::f32::consts::PI;
+use std::f32::{consts::PI, INFINITY};
 
 use nalgebra::{Vector3, Matrix3};
+use serde::Deserialize;
 
 use crate::ray::Ray;
 
+fn default_canvas_fov_x() -> f32 { return 130.0; }
+
+fn default_near_clipping_range() -> f32 { return 0.5; }
+
+fn default_far_clipping_range() -> f32 { return INFINITY; }
+
+fn default_canvas_width() -> f32 { return 1280.0; }
+
+fn default_canvas_height() -> f32 { return 720.0; }
+
+#[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Camera {
     pub origin: Vector3<f32>,
-    pub forward: Vector3<f32>,
+    pub target: Vector3<f32>,
     pub up: Vector3<f32>,
-    pub right: Vector3<f32>,
+    pub forward: Option<Vector3<f32>>,
+    pub right: Option<Vector3<f32>>,
+    #[serde(default = "default_canvas_fov_x")]
+    pub fov_x_deg: f32,
+    #[serde(default = "default_near_clipping_range")]
     pub near_clipping_range: f32,
+    #[serde(default = "default_far_clipping_range")]
     pub far_clipping_range: f32,
-    pub viewport_width: f32,
-    pub viewport_height: f32,
-    pub top_left_start: Vector3<f32>,
+    #[serde(default = "default_canvas_width")]
+    pub canvas_width: f32,
+    #[serde(default = "default_canvas_height")]
+    pub canvas_height: f32,
 }
 
 impl Camera {
-    pub fn new(origin_arg: Vector3<f32>, target_arg: Vector3<f32>, up_arg: Vector3<f32>, fov_x_arg: f32, near_clipping_range_arg: f32, far_clipping_range_arg: f32, aspect_ratio_arg: f32) -> Self {
-        
-        let origin = origin_arg;
-        let forward = (target_arg - origin_arg).normalize();
-        let up = up_arg.normalize();
-        let right = up.cross(&forward);
-        
-        let near_clipping_range = near_clipping_range_arg;
-        let far_clipping_range = far_clipping_range_arg;
-        let fov_x = ((fov_x_arg * 0.5) / 180.0) * PI; // radian
-        let viewport_width = 2.0 * near_clipping_range * fov_x.tan();
-        let viewport_height = viewport_width / aspect_ratio_arg;
 
-        let top_left_start = origin + (forward * near_clipping_range) - ((viewport_width/2.0)*right) + ((viewport_height/2.0) * up);
-
-        Self {
-            origin,
-            forward,
-            up,
-            right,
-            near_clipping_range,
-            far_clipping_range,
-            viewport_width,
-            viewport_height,
-            top_left_start,
-        }
+    pub fn up(&self) -> Vector3<f32> { return self.up.normalize(); }
+    pub fn forward(&self) -> Vector3<f32> { return self.forward.unwrap(); }
+    pub fn right(&self) -> Vector3<f32> { return self.right.unwrap(); }
+    pub fn aspect_ratio(&self) -> f32 { return self.canvas_width / self.canvas_height; }
+    pub fn viewport_width(&self) -> f32 {
+        let fov_x_rad =  ((self.fov_x_deg * 0.5) / 180.0) * PI; // radian
+        return 2.0 * self.near_clipping_range * fov_x_rad.tan();
     }
+    pub fn viewport_height(&self) -> f32 { return self.viewport_width() / self.aspect_ratio(); }
+    pub fn top_left_start(&self) -> Vector3<f32> { return self.origin + (self.forward() * self.near_clipping_range) - ((self.viewport_width()/2.0) * self.right()) + ((self.viewport_height()/2.0) * self.up());}
+
 
     pub fn rotate_around_up(&mut self, angle_degree: f32) -> () {
 
@@ -56,8 +59,9 @@ impl Camera {
             angle_rad.sin(), 0.0,  angle_rad.cos()
         );
 
-        self.right = (rotation_mat * self.right).normalize();
-        self.forward = (rotation_mat * self.forward).normalize();
+        
+        self.right = Some((rotation_mat * self.right()).normalize());
+        self.forward = Some((rotation_mat * self.forward()).normalize());
     }
 
     pub fn rotate_around_forward(&mut self, angle_degree: f32) -> () {
@@ -69,8 +73,8 @@ impl Camera {
             0.0               , 0.0              ,  1.0,
         );
 
-        self.up = rotation_mat * self.up;
-        self.right = rotation_mat * self.right;
+        self.up = (rotation_mat * self.up()).normalize();
+        self.right = Some((rotation_mat * self.right()).normalize());
     }
 
     pub fn rotate_around_right(&mut self, angle_degree: f32) -> () {
@@ -82,7 +86,7 @@ impl Camera {
             0.0               , (-angle_rad).sin(), angle_rad.cos()
         );
 
-        self.up = rotation_mat * self.up;
-        self.forward = rotation_mat * self.forward;
+        self.up = (rotation_mat * self.up()).normalize();
+        self.forward = Some((rotation_mat * self.forward()).normalize());
     }
 }

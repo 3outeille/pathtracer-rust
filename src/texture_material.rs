@@ -1,33 +1,103 @@
 use nalgebra::Vector3;
+use serde::Deserialize;
 
-pub trait TextureMaterial: {
-    fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>);
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub struct TextureMaterial {
+    pub color: Vector3<f32>,
+    #[serde(default)]
+    pub surface: Surface,
 }
 
-pub struct UniformTexture {
-    pub ka: f32,
-    pub kd: f32,
-    pub ks: f32,
-    pub ns: f32,
-    pub kr: f32,
-    pub color: Vector3<f32>
-}
-
-impl UniformTexture {
-    pub fn new(ka_arg: f32, kd_arg: f32, ks_arg: f32, ns_arg: f32, kr_arg: f32, color_arg: Vector3<f32>) -> Self {
-        Self {
-            ka: ka_arg,
-            kd: kd_arg,
-            ks: ks_arg,
-            ns: ns_arg,
-            kr: kr_arg,
-            color: color_arg
+impl Default for TextureMaterial {
+    fn default() -> Self {
+        TextureMaterial {
+            color: Vector3::new(0.3, 0.1, 0.1), // red
+            surface: Surface::default(),
         }
     }
 }
 
-impl TextureMaterial for UniformTexture {
-    fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>) {
-        return (self.ka, self.kd, self.ks, self.ns, self.kr, self.color);
+impl TextureMaterial {
+    pub fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>) {
+        return (self.surface.ambient.ka,
+                self.surface.diffuse.kd,
+                self.surface.specular.ks,
+                self.surface.specular.ns,
+                self.surface.reflection.kr,
+                self.color
+        );
+    }
+}
+
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub struct Surface {
+    pub ambient: Ambient,
+    pub diffuse: Diffuse,
+    pub specular: Specular,
+    pub reflection: Reflection,
+}
+
+impl Default for Surface {
+    fn default() -> Self {
+        Self {
+            ambient: Ambient::new(1.0),
+            diffuse: Diffuse::new(1.0),
+            specular: Specular::new(1.0, 15.0),
+            reflection: Reflection::new(0.5)
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub struct Ambient {
+    pub ka: f32
+}
+
+impl Ambient {
+    pub fn new(ka: f32) -> Self {
+        Self {
+            ka
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub struct Diffuse {
+    pub kd: f32
+}
+
+impl Diffuse {
+    pub fn new(kd: f32) -> Self {
+        Self {
+            kd
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub struct Specular {
+    pub ks: f32,
+    pub ns: f32
+}
+
+impl Specular {
+    pub fn new(ks: f32, ns: f32) -> Self {
+        Self {
+            ks,
+            ns
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub struct Reflection {
+    pub kr: f32
+}
+
+impl Reflection {
+    pub fn new(kr: f32) -> Self {
+        Self {
+            kr
+        }
     }
 }

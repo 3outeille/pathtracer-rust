@@ -1,8 +1,8 @@
 extern crate nalgebra;
 
 use std::rc::Rc;
-
 use nalgebra::Vector3;
+use serde::Deserialize;
 
 use { crate::texture_material::TextureMaterial, crate::ray::Ray };
 
@@ -16,10 +16,11 @@ pub trait ObjectsTrait {
     fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>);
 }
 
+#[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Sphere {
     pub center: Vector3<f32>,
     pub radius: f32,
-    pub textmat: Rc<dyn TextureMaterial>
+    pub textmat: TextureMaterial
 }
 
 impl ObjectsTrait for Sphere {
@@ -54,10 +55,11 @@ impl ObjectsTrait for Sphere {
     }
 }
 
+#[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Plane {
     pub center: Vector3<f32>,
     pub normal: Vector3<f32>,
-    pub textmat: Rc<dyn TextureMaterial>
+    pub textmat: TextureMaterial
 }
 
 impl ObjectsTrait for Plane {
@@ -88,11 +90,12 @@ impl ObjectsTrait for Plane {
     }
 }
 
+#[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Triangle {
     pub v0: Vector3<f32>,
     pub v1: Vector3<f32>,
     pub v2: Vector3<f32>,
-    pub textmat: Rc<dyn TextureMaterial>
+    pub textmat: TextureMaterial
 }
 
 impl ObjectsTrait for Triangle {
