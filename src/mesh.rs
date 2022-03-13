@@ -1,82 +1,81 @@
-use std::rc::Rc;
-
+use std::{rc::Rc, fs::File, io::{BufReader, BufRead, self}};
 use nalgebra::Vector3;
+use serde::Deserialize;
 
-use crate::{texture_material::TextureMaterial, objects::Triangle};
+use crate::{objects::Triangle, scene::Scene, texture_material::TextureMaterial};
 
+fn default_path() -> String { return "".to_string(); }
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct Mesh {
-    pub width: f32,
-    pub height: f32,
-    pub depth: f32,
-    pub space_cube: Vector3<f32>,
-    pub offset: f32,
-    pub threshold: f32,
-    pub textmat: Rc<dyn TextureMaterial>
+    #[serde(default = "default_path")]
+    pub path: String,
+    pub textmat: TextureMaterial
 }
 
 impl Mesh {
 
-    pub fn new(&self, width: usize, height: usize, depth: usize, space_cube: Vector3<f32>, offset: f32, threshold:f32, textmat: Rc<dyn TextureMaterial>) -> Mesh {
+    pub fn convert_to_triangles(&mut self, scene: &mut Scene) -> () {
 
-        space_cube_orig = ;
-        space_cube_dst = ;
+        let faces = match self.parse_obj_file() {
+            Ok(res) => res,
+            Err(error) => panic!("Problem in parsing obj file '{}': {:?}'", self.path, error)
+        };
 
-        Mesh {
-            
-        }
+        self.triangularization(scene, &faces);
     }
 
-    pub fn marching_cube(&self, threshold: f32) -> Vec<Rc<Triangle>> {
-        let triangles: Vec<Rc<Triangle>> = Vec::new();
-
-        let curr_cub = self.space_cube.clone();
-
-        for _ in (0, space_cube_dst.z()){
-            for _ in (0, space_cube_dst.y() { 
-                for _ in (0, space_cube_dst.x() {
-                    
-                    curr_cub.z += offset;
-                    self.generate_triangles(&curr_cub, &triangles);
-                }
-            
-                curr_cub.y += offset;
-            }
-
-            curr_cub.x += offset;
-        }
-
-        return triangles;
-    }
-
-    pub fn generate_triangles(&self, curr_cub: &Vec3<f32>, triangles: &Vec<Rc<Triangle>>) -> () {
-        let index = self.vertices_to_index(curr_cub);
-
-        let edges = lookup_table[index];
+    pub fn parse_obj_file(&self) -> Result<Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)>, io::Error> {
+        let f = File::open(&self.path)?;
+        let f = BufReader::new(f);
         
-        // Connect edges to get triangles
-        self.connect_edges(edges, &triangles);
+        let mut vertices: Vec<Vector3<f32>>= Vec::new();
+        let mut faces: Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)> = Vec::new();
+
+        for line in f.lines() {
+            let line = line.unwrap();
+            
+            if line.is_empty() { continue; }
+
+            let mut tokens = line.split_whitespace();
+
+            match tokens.next().unwrap() {
+                "v" => {
+                    let xyz = tokens
+                        .map(|val| val.parse::<f32>().unwrap())
+                        .collect::<Vec<f32>>();
+
+                    vertices.push(Vector3::new(xyz[0], xyz[1], xyz[2]));
+                }
+                "f" => {
+                    let v0v1v2 = tokens
+                        .map(|val| val.parse::<usize>().unwrap())
+                        .collect::<Vec<usize>>();
+                    
+                    // Obj model starts index at 1 instead of 0.
+                    let face = (vertices[v0v1v2[0] - 1], vertices[v0v1v2[1] - 1], vertices[v0v1v2[2] - 1]);
+                    faces.push(face);
+                    
+                }
+                _ => {} // TODO: parse vt and vn
+            }
+        }
+      
+        return Ok(faces);
     }
 
-    pub fn vertices_to_index(&self, curr_cub: &Vec3<f32>) -> u8 {
-        let index = 0 as u8;
+    pub fn triangularization(&mut self, scene: &mut Scene, faces: &Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)>) -> () {
 
-        if get_potential_at(0, curr_cub) < self.threshold { index |= 1;  }
-        if get_potential_at(1, curr_cub) < self.threshold { index |= 2;  }
-        if get_potential_at(2, curr_cub) < self.threshold { index |= 4;  }
-        if get_potential_at(3, curr_cub) < self.threshold { index |= 8;  }
-        if get_potential_at(4, curr_cub) < self.threshold { index |= 16; }
-        if get_potential_at(5, curr_cub) < self.threshold { index |= 32; }
-        if get_potential_at(6, curr_cub) < self.threshold { index |= 64; }
-        if get_potential_at(7, curr_cub) < self.threshold { index |= 128;}
-
-        return index;
-    }
-
-    pub fn get_potential_at(&self, vertex: u8, curr_cub: &Vec3<f32>) -> f32 {
-        todo!()
-    }
-
-    pub fn connect_edges(&self, edges: Vec<u8>, triangles: &Vec<Rc<Triangle>>) -> () {
-        todo!()
+        for (v0, v1, v2) in faces {
+            
+            scene.add_object( Rc::new( 
+                Triangle {
+                    v0: *v0,
+                    v1: *v1,
+                    v2: *v2,
+                    textmat: self.textmat
+                }
+            ));
+        }
     }
 }

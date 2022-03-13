@@ -6,6 +6,7 @@ camera:
   near_clipping_range: 0.5
   canvas_width: 1280
   canvas_height: 720
+
 spheres:
   # Ground
   - center: [0.0, -100.5, -1.0]
@@ -52,6 +53,7 @@ spheres:
           ns: 15.0
         reflection:
           kr: 0.3
+
 planes:
   # Right background
   - center: [0.0, 0.0, 50.0]
@@ -83,6 +85,7 @@ planes:
           ns: 15.0
         reflection:
           kr: 0.3
+
 lights:
   - position: [1.0, 1.0, 0.5]
     intensity: 0.9

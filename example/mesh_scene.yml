@@ -1,16 +1,14 @@
 camera:
-  origin: [0.0, 0.0, -0.5]
+  origin: [0.0, 2.0, -3.0]
   target: [0.0, 0.0, 1.0]
   up: [0.0, 1.0, 0.0]
   fov_x_deg: 130.0 # degree
   near_clipping_range: 0.5
-  canvas_width: 1280
-  canvas_height: 720
+  canvas_width: 360
+  canvas_height: 211
 
-triangles:
-  - v0: [-1.0, -1.0, 1.0]
-    v1: [1.0, -1.0, 1.0]
-    v2: [0.0, 1.0, 1.0]
+meshes:
+  - path: example/models/teapot.obj
     textmat:
       color: [0.3, 0.1, 0.1] # red
       surface:
@@ -25,5 +23,5 @@ triangles:
           kr: 0.3
 
 lights:
-  - position: [1.0, 1.0, 0.5]
-    intensity: 0.9
+  - position: [0.0, 2.0, -3.0]
+    intensity: 1.3

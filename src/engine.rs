@@ -13,13 +13,15 @@ use {crate::scene::*, crate::ray::*};
 #[derive(Debug, Deserialize)]
 pub struct Engine {
     pub camera: Camera,
+    pub lights: Vec<PointLight>,
     #[serde(default = "Vec::new")]
     pub spheres: Vec<Sphere>,
     #[serde(default = "Vec::new")]
     pub triangles: Vec<Triangle>,
     #[serde(default = "Vec::new")]
     pub planes: Vec<Plane>,
-    pub lights: Vec<PointLight>
+    #[serde(default = "Vec::new")]
+    pub meshes: Vec<Mesh>
 }
 
 impl Engine {
@@ -27,12 +29,8 @@ impl Engine {
     pub fn init_scene(&mut self) -> Result<Scene, std::io::Error> {
 
         // Init camera
-        if self.camera.forward.is_none() {
-            self.camera.forward = Some((self.camera.target - self.camera.origin).normalize());
-        }
-        if self.camera.right.is_none() {
-            self.camera.right = Some(self.camera.up().cross(&self.camera.forward()));
-        }
+        self.camera.forward = Some((self.camera.target - self.camera.origin).normalize());
+        self.camera.right = Some(self.camera.up().cross(&self.camera.forward()));
 
         let mut scene = Scene::new(self.camera, self.camera.canvas_width as usize, self.camera.canvas_height as usize);
         
@@ -44,6 +42,10 @@ impl Engine {
             scene.add_object(Rc::new(triangle.clone()));
         }
 
+        for mesh in self.meshes.iter_mut() {
+            mesh.convert_to_triangles(&mut scene);
+        }
+        
         for plane in &self.planes {
             scene.add_object(Rc::new(plane.clone()));
         }
@@ -86,7 +88,6 @@ impl Engine {
                     pixels[offset * 3 + 2] = (255.0 * pixel_color.z) as u8;
                 }
             }
-
         }
 
         return pixels;
