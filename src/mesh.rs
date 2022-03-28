@@ -6,7 +6,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{objects::Triangle, scene::Scene, texture_material::TextureMaterial};
+use crate::{objects::Triangle, engine::Engine, texture_material::TextureMaterial};
 
 fn default_path() -> String {
     return "".to_string();
@@ -20,13 +20,13 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn convert_to_triangles(&mut self, scene: &mut Scene) -> () {
+    pub fn convert_to_triangles(&self, engine: &mut Engine) -> () {
         let faces = match self.parse_obj_file() {
             Ok(res) => res,
             Err(error) => panic!("Problem in parsing obj file '{}': {:?}'", self.path, error),
         };
 
-        self.triangularization(scene, &faces);
+        self.triangularization(engine, &faces);
     }
 
     pub fn parse_obj_file(
@@ -76,12 +76,12 @@ impl Mesh {
     }
 
     pub fn triangularization(
-        &mut self,
-        scene: &mut Scene,
+        &self,
+        engine: &mut Engine,
         faces: &Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)>,
     ) -> () {
         for (v0, v1, v2) in faces {
-            scene.add_object(Rc::new(Triangle {
+            engine.add_object(Rc::new(Triangle {
                 v0: *v0,
                 v1: *v1,
                 v2: *v2,

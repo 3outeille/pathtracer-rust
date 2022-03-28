@@ -22,19 +22,18 @@ use {
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
     let file = File::open(&args[1])?;
-    let mut engine: Engine = serde_yaml::from_reader(file)?;
+    let scene: Scene = serde_yaml::from_reader(file)?;
 
-    if let Ok(scene) = engine.init_scene() {
-        let pixels = engine.render_scene(&scene);
-        engine
-            .save_scene(
-                "output.png",
-                &pixels,
-                &scene.canvas_width,
-                &scene.canvas_height,
-            )
-            .expect("error writing image");
-    }
+    let engine = Engine::from_scene(&scene);
+    let pixels = engine.render();
+    engine
+        .save(
+            "output.png",
+            &pixels,
+            &engine.canvas_width,
+            &engine.canvas_height,
+        )
+        .expect("error writing image");
 
     return Ok(());
 }
