@@ -14,7 +14,7 @@ use crate::{
     Ray,
 };
 
-const EPSILON: f32 = 1e-4;
+const EPSILON: f32 = 1e-3;
 const REFLECTION_DEPTH: i32 = 5;
 
 pub struct Engine {
@@ -42,8 +42,9 @@ impl Engine {
         let mut camera = scene.camera.clone();
 
         // Init camera
-        camera.forward = Some((scene.camera.target - scene.camera.origin).normalize());
-        camera.right = Some(scene.camera.up().cross(&camera.forward()));
+        camera.up = camera.up.normalize();
+        camera.forward = camera.forward.normalize();
+        camera.right = scene.camera.up.cross(&camera.forward);
 
         let mut engine = Engine::new(
             camera,
@@ -96,7 +97,7 @@ impl Engine {
                     (j as f32 * self.camera.viewport_height()) / (self.canvas_height - 1) as f32;
 
                 let target =
-                    self.camera.top_left_start() + u * self.camera.right() - v * self.camera.up;
+                    self.camera.top_left_start() + u * self.camera.right - v * self.camera.up;
                 let ray = Ray::new(
                     self.camera.origin,
                     (target - self.camera.origin).normalize(),

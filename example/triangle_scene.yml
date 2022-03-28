@@ -1,6 +1,6 @@
 camera:
   origin: [0.0, 0.0, -0.5]
-  target: [0.0, 0.0, 1.0]
+  forward: [0.0, 0.0, 1.0]
   up: [0.0, 1.0, 0.0]
   fov_x_deg: 130.0 # degree
   near_clipping_range: 0.5
