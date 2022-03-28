@@ -1,41 +1,49 @@
-use std::{rc::Rc, fs::File, io::{BufReader, BufRead, self}};
 use nalgebra::Vector3;
 use serde::Deserialize;
+use std::{
+    fs::File,
+    io::{self, BufRead, BufReader},
+    rc::Rc,
+};
 
 use crate::{objects::Triangle, scene::Scene, texture_material::TextureMaterial};
 
-fn default_path() -> String { return "".to_string(); }
+fn default_path() -> String {
+    return "".to_string();
+}
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Mesh {
     #[serde(default = "default_path")]
     pub path: String,
-    pub textmat: TextureMaterial
+    pub textmat: TextureMaterial,
 }
 
 impl Mesh {
-
     pub fn convert_to_triangles(&mut self, scene: &mut Scene) -> () {
-
         let faces = match self.parse_obj_file() {
             Ok(res) => res,
-            Err(error) => panic!("Problem in parsing obj file '{}': {:?}'", self.path, error)
+            Err(error) => panic!("Problem in parsing obj file '{}': {:?}'", self.path, error),
         };
 
         self.triangularization(scene, &faces);
     }
 
-    pub fn parse_obj_file(&self) -> Result<Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)>, io::Error> {
+    pub fn parse_obj_file(
+        &self,
+    ) -> Result<Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)>, io::Error> {
         let f = File::open(&self.path)?;
         let f = BufReader::new(f);
-        
-        let mut vertices: Vec<Vector3<f32>>= Vec::new();
+
+        let mut vertices: Vec<Vector3<f32>> = Vec::new();
         let mut faces: Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)> = Vec::new();
 
         for line in f.lines() {
             let line = line.unwrap();
-            
-            if line.is_empty() { continue; }
+
+            if line.is_empty() {
+                continue;
+            }
 
             let mut tokens = line.split_whitespace();
 
@@ -51,31 +59,34 @@ impl Mesh {
                     let v0v1v2 = tokens
                         .map(|val| val.parse::<usize>().unwrap())
                         .collect::<Vec<usize>>();
-                    
+
                     // Obj model starts index at 1 instead of 0.
-                    let face = (vertices[v0v1v2[0] - 1], vertices[v0v1v2[1] - 1], vertices[v0v1v2[2] - 1]);
+                    let face = (
+                        vertices[v0v1v2[0] - 1],
+                        vertices[v0v1v2[1] - 1],
+                        vertices[v0v1v2[2] - 1],
+                    );
                     faces.push(face);
-                    
                 }
                 _ => {} // TODO: parse vt and vn
             }
         }
-      
+
         return Ok(faces);
     }
 
-    pub fn triangularization(&mut self, scene: &mut Scene, faces: &Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)>) -> () {
-
+    pub fn triangularization(
+        &mut self,
+        scene: &mut Scene,
+        faces: &Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)>,
+    ) -> () {
         for (v0, v1, v2) in faces {
-            
-            scene.add_object( Rc::new( 
-                Triangle {
-                    v0: *v0,
-                    v1: *v1,
-                    v2: *v2,
-                    textmat: self.textmat
-                }
-            ));
+            scene.add_object(Rc::new(Triangle {
+                v0: *v0,
+                v1: *v1,
+                v2: *v2,
+                textmat: self.textmat,
+            }));
         }
     }
 }

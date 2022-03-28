@@ -1,14 +1,24 @@
-
+use image::png::PNGEncoder;
 use image::ColorType;
 use nalgebra::Vector3;
-use serde::{Deserialize, de::Error};
-use std::{fs::{File, self}, path::Path, f32::INFINITY, rc::Rc, collections::HashMap};
-use image::png::PNGEncoder;
+use serde::{de::Error, Deserialize};
+use std::{
+    collections::HashMap,
+    f32::INFINITY,
+    fs::{self, File},
+    path::Path,
+    rc::Rc,
+};
 // use fltk::{app, button::Button, frame::Frame, prelude::*, window::Window};
 
-use crate::{camera::Camera, objects::{Sphere, Triangle, Plane}, light::{PointLight, self}, mesh::Mesh};
+use crate::{
+    camera::Camera,
+    light::{self, PointLight},
+    mesh::Mesh,
+    objects::{Plane, Sphere, Triangle},
+};
 
-use {crate::scene::*, crate::ray::*};
+use {crate::ray::*, crate::scene::*};
 
 #[derive(Debug, Deserialize)]
 pub struct Engine {
@@ -21,23 +31,25 @@ pub struct Engine {
     #[serde(default = "Vec::new")]
     pub planes: Vec<Plane>,
     #[serde(default = "Vec::new")]
-    pub meshes: Vec<Mesh>
+    pub meshes: Vec<Mesh>,
 }
 
 impl Engine {
-
     pub fn init_scene(&mut self) -> Result<Scene, std::io::Error> {
-
         // Init camera
         self.camera.forward = Some((self.camera.target - self.camera.origin).normalize());
         self.camera.right = Some(self.camera.up().cross(&self.camera.forward()));
 
-        let mut scene = Scene::new(self.camera, self.camera.canvas_width as usize, self.camera.canvas_height as usize);
-        
+        let mut scene = Scene::new(
+            self.camera,
+            self.camera.canvas_width as usize,
+            self.camera.canvas_height as usize,
+        );
+
         for sphere in &self.spheres {
             scene.add_object(Rc::new(sphere.clone()));
         }
-        
+
         for triangle in &self.triangles {
             scene.add_object(Rc::new(triangle.clone()));
         }
@@ -45,7 +57,7 @@ impl Engine {
         for mesh in self.meshes.iter_mut() {
             mesh.convert_to_triangles(&mut scene);
         }
-        
+
         for plane in &self.planes {
             scene.add_object(Rc::new(plane.clone()));
         }
@@ -53,7 +65,7 @@ impl Engine {
         for light in &self.lights {
             scene.add_light(light.clone());
         }
-        
+
         return Ok(scene);
     }
 
@@ -71,19 +83,27 @@ impl Engine {
 
         for j in 0..scene.canvas_height {
             for i in 0..scene.canvas_width {
-                
-                let u = (i as f32 * scene.camera.viewport_width()) / (scene.canvas_width - 1) as f32;
-                let v = (j as f32 * scene.camera.viewport_height()) / (scene.canvas_height - 1) as f32;
-                
-                let target = scene.camera.top_left_start() + u * scene.camera.right() - v * scene.camera.up;
-                let ray = Ray::new(scene.camera.origin, (target - scene.camera.origin).normalize());
+                let u =
+                    (i as f32 * scene.camera.viewport_width()) / (scene.canvas_width - 1) as f32;
+                let v =
+                    (j as f32 * scene.camera.viewport_height()) / (scene.canvas_height - 1) as f32;
 
-                if let (intersect_point, Some(min_obj)) = scene.cast_ray(&ray, scene.camera.near_clipping_range, scene.camera.far_clipping_range) {
+                let target =
+                    scene.camera.top_left_start() + u * scene.camera.right() - v * scene.camera.up;
+                let ray = Ray::new(
+                    scene.camera.origin,
+                    (target - scene.camera.origin).normalize(),
+                );
 
-                    let pixel_color = scene.get_color_ray(&intersect_point, &min_obj, &ray,0);     
-                    
+                if let (intersect_point, Some(min_obj)) = scene.cast_ray(
+                    &ray,
+                    scene.camera.near_clipping_range,
+                    scene.camera.far_clipping_range,
+                ) {
+                    let pixel_color = scene.get_color_ray(&intersect_point, &min_obj, &ray, 0);
+
                     let offset = j * scene.canvas_width + i;
-                    pixels[offset * 3] = (255.0 * pixel_color.x)  as u8;
+                    pixels[offset * 3] = (255.0 * pixel_color.x) as u8;
                     pixels[offset * 3 + 1] = (255.0 * pixel_color.y) as u8;
                     pixels[offset * 3 + 2] = (255.0 * pixel_color.z) as u8;
                 }
@@ -107,7 +127,13 @@ impl Engine {
         todo!()
     }
 
-    pub fn save_scene(&self, filename: &str, pixels: &[u8], width: &usize, height: &usize) -> Result<(), std::io::Error> {
+    pub fn save_scene(
+        &self,
+        filename: &str,
+        pixels: &[u8],
+        width: &usize,
+        height: &usize,
+    ) -> Result<(), std::io::Error> {
         let output = File::create(filename)?;
         let encoder = PNGEncoder::new(output);
         encoder.encode(pixels, *width as u32, *height as u32, ColorType::RGB(8))?;
