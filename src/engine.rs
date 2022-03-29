@@ -203,7 +203,7 @@ impl Engine {
             (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
 
         // Phong Model
-        let ambient = material_color * 0.5;
+        let ambient = material_color * 0.2;
         let mut diffuse = Vector3::zeros();
         let mut specular = Vector3::zeros();
 

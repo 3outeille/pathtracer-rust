@@ -136,7 +136,7 @@ triangles:
           ns: 15.0
         reflection:
           kr: 0.3
-  # # Right wall bottom right
+  # Right wall bottom right
   - v0: [2.0, 0.0, -2.0]
     v1: [2.0, 4.0, -2.0]
     v2: [2.0, 0.0, 2.0]
@@ -152,12 +152,28 @@ triangles:
           ns: 15.0
         reflection:
           kr: 0.3
-  # # Right wall top left
+  # Right wall top left
   - v0: [2.0, 0.0, 2.0]
     v1: [2.0, 4.0, -2.0]
     v2: [2.0, 4.0, 2.0]
     textmat:
       color: [0.75, 0.15, 0.15] # red
+      surface:
+        ambient:
+          ka: 1.0
+        diffuse:
+          kd: 1.5
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0.3
+
+spheres:
+  - center: [-1.0, 2.0, 1.0]
+    radius: 0.5
+    textmat:
+      color: [0.7, 0.2, 0.2] # red
       surface:
         ambient:
           ka: 1.0
