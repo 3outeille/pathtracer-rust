@@ -24,4 +24,5 @@ meshes:
 
 lights:
   - position: [0.0, 2.0, -3.0]
+    color: [1.0, 1.0, 1.0]
     intensity: 1.3

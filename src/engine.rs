@@ -103,18 +103,17 @@ impl Engine {
                     (target - self.camera.origin).normalize(),
                 );
 
-                if let (intersect_point, Some(min_obj)) = self.cast_ray(
+                let cast_result = self.cast_ray(
                     &ray,
                     self.camera.near_clipping_range,
                     self.camera.far_clipping_range,
-                ) {
-                    let pixel_color = self.get_color_ray(&intersect_point, &min_obj, &ray, 0);
+                );
+                let pixel_color = self.get_color_ray(cast_result, &ray, 0);
+                let offset = j * self.canvas_width + i;
 
-                    let offset = j * self.canvas_width + i;
-                    pixels[offset * 3] = (255.0 * pixel_color.x) as u8;
-                    pixels[offset * 3 + 1] = (255.0 * pixel_color.y) as u8;
-                    pixels[offset * 3 + 2] = (255.0 * pixel_color.z) as u8;
-                }
+                pixels[offset * 3] = (255.0 * pixel_color.x) as u8;
+                pixels[offset * 3 + 1] = (255.0 * pixel_color.y) as u8;
+                pixels[offset * 3 + 2] = (255.0 * pixel_color.z) as u8;
             }
         }
 
@@ -162,7 +161,7 @@ impl Engine {
         ray: &Ray,
         near_clipping_range: f32,
         far_clipping_range: f32,
-    ) -> (Option<Vector3<f32>>, Option<Rc<dyn ObjectsTrait>>) {
+    ) -> Option<(Vector3<f32>, Rc<dyn ObjectsTrait>)> {
         let mut min_t = std::f32::MAX;
         let mut min_obj: Option<Rc<dyn ObjectsTrait>> = None;
 
@@ -179,95 +178,80 @@ impl Engine {
             };
         }
 
-        let intersection_point = if min_t != std::f32::MAX {
-            Some(ray.at(min_t))
+        if let Some(obj) = min_obj {
+            Some((ray.at(min_t), obj))
         } else {
             None
-        };
-
-        return (intersection_point, min_obj);
+        }
     }
 
     pub fn get_color_ray(
         &self,
-        intersection_point: &Option<Vector3<f32>>,
-        obj: &Rc<dyn ObjectsTrait>,
+        cast_result: Option<(Vector3<f32>, Rc<dyn ObjectsTrait>)>,
         ray: &Ray,
         depth: i32,
     ) -> Vector3<f32> {
-        let mut pixel_color = Vector3::<f32>::zeros();
-
-        if intersection_point.is_none() {
-            return pixel_color;
+        if cast_result.is_none() {
+            return Vector3::zeros();
         }
 
+        let (intersection_point, obj) = cast_result.unwrap();
+
         let (ka, kd, ks, ns, kr, material_color) = obj.get_texture();
-        let normal = obj.get_normal(&intersection_point.unwrap()).normalize();
-        let reflection = (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
+        let normal = obj.get_normal(&intersection_point);
+        let reflected_dir =
+            (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
 
         // Phong Model
-        let ambient = material_color;
-        let mut diffuse = Vector3::<f32>::zeros();
-        let mut specular = Vector3::<f32>::zeros();
+        let ambient = material_color * 0.5;
+        let mut diffuse = Vector3::zeros();
+        let mut specular = Vector3::zeros();
 
         for light in &self.lights {
-            let light_dir = (light.position - intersection_point.unwrap()).normalize();
+            let light_vec = light.position - intersection_point;
+            let light_dir = light_vec.normalize();
+            let light_distance = light_vec.norm();
+            let light_value = light.intensity * light.color;
+
+            let shadow_ray = Ray::new(intersection_point, light_dir + normal * EPSILON);
+
+            if self
+                .cast_ray(&shadow_ray, EPSILON, light_distance)
+                .is_some()
+            {
+                continue;
+            }
 
             diffuse += {
                 let dot_prod = light_dir.dot(&normal).clamp(0.0, 1.0);
-                material_color * light.intensity * dot_prod
+                material_color.component_mul(&light_value) * dot_prod
             };
 
-            specular = specular.add_scalar({
-                let dot_prod = light_dir.dot(&reflection).clamp(0.0, 1.0).powf(ns);
-                light.intensity * dot_prod
-            });
-
-            let shadow_ray = Ray::new(intersection_point.unwrap() + (normal * EPSILON), light_dir);
-
-            if let (Some(intersect_point_towards_light), new_obj) = self.cast_ray(
-                &shadow_ray,
-                self.camera.near_clipping_range,
-                self.camera.far_clipping_range,
-            ) {
-                // Hit object towards light must be in-between the intial intersection point and the light.
-                if (intersect_point_towards_light - intersection_point.unwrap()).magnitude_squared()
-                    < (light.position - intersection_point.unwrap()).magnitude_squared()
-                {
-                    return pixel_color + (ka * ambient);
-                }
-            }
+            specular += {
+                let dot_prod = light_dir.dot(&reflected_dir).clamp(0.0, 1.0).powf(ns);
+                light_value * dot_prod
+            };
         }
-
-        pixel_color += (ka * ambient) + (kd * diffuse) + (ks * specular);
 
         if depth >= REFLECTION_DEPTH {
-            return pixel_color;
+            return Vector3::zeros();
         }
 
-        // When casting rays using previous intersection point, ray may hit under the surface
-        // due to numerical precision of the intersection point calculation (discriminant).
-        // The more rays are casted using previous intersection point, the more the error accumulate.
-        let reflected_ray = Ray::new(intersection_point.unwrap() + (normal * EPSILON), reflection);
-        let (reflected_intersection_point, new_obj) = self.cast_ray(
-            &reflected_ray,
-            self.camera.near_clipping_range,
-            self.camera.far_clipping_range,
-        );
+        let reflection = {
+            // When casting rays using previous intersection point, ray may hit under the surface
+            // due to numerical precision of the intersection point calculation (discriminant).
+            // The more rays are casted using previous intersection point, the more the error accumulate.
+            let reflected_ray = Ray::new(intersection_point + (normal * EPSILON), reflected_dir);
 
-        if new_obj.is_none() {
-            return pixel_color;
-        }
+            let cast_result = self.cast_ray(
+                &reflected_ray,
+                self.camera.near_clipping_range,
+                self.camera.far_clipping_range,
+            );
 
-        let reflection = self.get_color_ray(
-            &reflected_intersection_point,
-            &new_obj.unwrap(),
-            &reflected_ray,
-            depth + 1,
-        );
+            self.get_color_ray(cast_result, &reflected_ray, depth + 1)
+        };
 
-        pixel_color += kr * reflection;
-
-        return pixel_color;
+        return (ka * ambient) + (kd * diffuse) + (ks * specular) + (kr * reflection);
     }
 }

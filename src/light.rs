@@ -5,4 +5,5 @@ use serde::Deserialize;
 pub struct PointLight {
     pub position: Vector3<f32>,
     pub intensity: f32,
+    pub color: Vector3<f32>
 }

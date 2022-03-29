@@ -26,4 +26,5 @@ triangles:
 
 lights:
   - position: [1.0, 1.0, 0.5]
+    color: [1.0, 1.0, 1.0]
     intensity: 0.9

@@ -58,7 +58,7 @@ impl ObjectsTrait for Sphere {
     }
 
     fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32> {
-        return point - self.center;
+        return (point - self.center).normalize();
     }
 
     fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>) {
@@ -155,7 +155,7 @@ impl ObjectsTrait for Triangle {
     }
 
     fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32> {
-        return (self.v1 - self.v0).cross(&(self.v2 - self.v0));
+        return -(self.v1 - self.v0).cross(&(self.v2 - self.v0)).normalize();
     }
 
     fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>) {
