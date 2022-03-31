@@ -1,22 +1,11 @@
-use nalgebra::Vector3;
-use serde::{de::Error, Deserialize};
-use std::{
-    collections::HashMap,
-    f32::INFINITY,
-    fs::{self, File},
-    path::Path,
-    rc::Rc,
-};
-// use fltk::{app, button::Button, frame::Frame, prelude::*, window::Window};
+use serde::Deserialize;
 
 use crate::{
     camera::Camera,
-    light::{self, PointLight},
+    light::PointLight,
     mesh::Mesh,
     objects::{Plane, Sphere, Triangle},
 };
-
-use {crate::ray::*, crate::engine::*};
 
 #[derive(Debug, Deserialize)]
 pub struct Scene {

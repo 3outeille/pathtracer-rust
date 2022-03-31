@@ -2,13 +2,12 @@ extern crate nalgebra;
 
 use nalgebra::Vector3;
 use serde::Deserialize;
-use std::rc::Rc;
 
 use {crate::ray::Ray, crate::texture_material::TextureMaterial};
 
 const EPSILON: f32 = 1e-6;
 
-pub trait ObjectsTrait {
+pub trait ObjectsTrait: Sync + Send {
     fn intersects(
         &self,
         ray: &Ray,

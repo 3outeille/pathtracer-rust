@@ -1,9 +1,7 @@
-#![allow(unused_imports, unused_variables)]
-
-use nalgebra::Vector3;
+use engine::Engine;
 use serde_yaml;
 use std::error::Error;
-use std::{collections::HashMap, env, f32::INFINITY, fs::File, path::Path, rc::Rc};
+use std::{env, fs::File};
 
 mod camera;
 mod engine;
@@ -14,10 +12,7 @@ mod ray;
 mod scene;
 mod texture_material;
 
-use {
-    crate::camera::*, crate::engine::*, crate::light::*, crate::mesh::*, crate::objects::*,
-    crate::ray::*, crate::scene::*, crate::texture_material::*,
-};
+use {crate::ray::*, crate::scene::*};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
@@ -25,15 +20,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let scene: Scene = serde_yaml::from_reader(file)?;
 
     let engine = Engine::from_scene(&scene);
-    let pixels = engine.render();
-    engine
-        .save(
-            "output.png",
-            &pixels,
-            &engine.canvas_width,
-            &engine.canvas_height,
-        )
-        .expect("error writing image");
+    let width = engine.canvas_width;
+    let height = engine.canvas_height;
+
+    let pixels = engine.render(args[2].parse().unwrap());
+    Engine::save("output.png", &pixels, width, height).expect("error writing image");
 
     return Ok(());
 }

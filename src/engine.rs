@@ -1,18 +1,13 @@
-use core::panic;
-use std::rc::Rc;
-use std::{cmp::max, fs::File};
+use std::fs::File;
+use std::sync::Arc;
+use std::thread;
 
 use image::png::PNGEncoder;
 use image::ColorType;
 use nalgebra::Vector3;
 
 use crate::scene::Scene;
-use crate::{
-    camera::Camera,
-    light::{self, PointLight},
-    objects::{self, ObjectsTrait},
-    Ray,
-};
+use crate::{camera::Camera, light::PointLight, objects::ObjectsTrait, Ray};
 
 const EPSILON: f32 = 1e-3;
 const REFLECTION_DEPTH: i32 = 5;
@@ -20,7 +15,7 @@ const REFLECTION_DEPTH: i32 = 5;
 pub struct Engine {
     pub camera: Camera,
     // pub blobs: Vec<Blob>,
-    pub objects: Vec<Rc<dyn ObjectsTrait>>,
+    pub objects: Vec<Box<dyn ObjectsTrait>>,
     pub lights: Vec<PointLight>,
     pub canvas_width: usize,
     pub canvas_height: usize,
@@ -53,11 +48,11 @@ impl Engine {
         );
 
         for sphere in &scene.spheres {
-            engine.add_object(Rc::new(sphere.clone()));
+            engine.add_object(Box::new(sphere.clone()));
         }
 
         for triangle in &scene.triangles {
-            engine.add_object(Rc::new(triangle.clone()));
+            engine.add_object(Box::new(triangle.clone()));
         }
 
         for mesh in &scene.meshes {
@@ -65,7 +60,7 @@ impl Engine {
         }
 
         for plane in &scene.planes {
-            engine.add_object(Rc::new(plane.clone()));
+            engine.add_object(Box::new(plane.clone()));
         }
 
         for light in &scene.lights {
@@ -79,7 +74,7 @@ impl Engine {
     //     self.blobs.push(mesh);
     // }
 
-    pub fn add_object(&mut self, object: Rc<dyn ObjectsTrait>) -> () {
+    pub fn add_object(&mut self, object: Box<dyn ObjectsTrait>) -> () {
         self.objects.push(object);
     }
 
@@ -87,33 +82,72 @@ impl Engine {
         self.lights.push(light)
     }
 
-    pub fn render(&self) -> Vec<u8> {
-        let mut pixels = vec![0; self.canvas_width * self.canvas_height * 3];
+    pub fn render(self, cpu: usize) -> Vec<u8> {
+        assert!((self.camera.canvas_width * self.camera.canvas_height) as usize % cpu == 0);
 
-        for j in 0..self.canvas_height {
-            for i in 0..self.canvas_width {
-                let u = (i as f32 * self.camera.viewport_width()) / (self.canvas_width - 1) as f32;
-                let v =
-                    (j as f32 * self.camera.viewport_height()) / (self.canvas_height - 1) as f32;
+        let mut handles = vec![];
 
-                let target =
-                    self.camera.top_left_start() + u * self.camera.right - v * self.camera.up;
-                let ray = Ray::new(
-                    self.camera.origin,
-                    (target - self.camera.origin).normalize(),
-                );
+        let engine = Arc::new(self);
 
-                let cast_result = self.cast_ray(
-                    &ray,
-                    self.camera.near_clipping_range,
-                    self.camera.far_clipping_range,
-                );
-                let pixel_color = self.get_color_ray(cast_result, &ray, 0);
-                let offset = j * self.canvas_width + i;
+        for w in 0..cpu {
+            let engine = engine.clone();
 
-                pixels[offset * 3] = (255.0 * pixel_color.x) as u8;
-                pixels[offset * 3 + 1] = (255.0 * pixel_color.y) as u8;
-                pixels[offset * 3 + 2] = (255.0 * pixel_color.z) as u8;
+            let t = thread::spawn(move || {
+                let mut thread_res =
+                    vec![
+                        Vector3::zeros();
+                        (engine.camera.canvas_width * engine.camera.canvas_height) as usize / cpu
+                    ];
+
+                for j in 0..engine.canvas_height {
+                    for i in 0..engine.canvas_width {
+                        let offset = j * engine.canvas_width + i;
+
+                        if offset % cpu != w {
+                            continue;
+                        }
+
+                        let u = (i as f32 * engine.camera.viewport_width())
+                            / (engine.canvas_width - 1) as f32;
+                        let v = (j as f32 * engine.camera.viewport_height())
+                            / (engine.canvas_height - 1) as f32;
+
+                        let target = engine.camera.top_left_start() + u * engine.camera.right
+                            - v * engine.camera.up;
+                        let ray = Ray::new(
+                            engine.camera.origin,
+                            (target - engine.camera.origin).normalize(),
+                        );
+
+                        let cast_result = engine.cast_ray(
+                            &ray,
+                            engine.camera.near_clipping_range,
+                            engine.camera.far_clipping_range,
+                        );
+
+                        let pixel_color = engine.get_color_ray(cast_result, &ray, 0);
+
+                        thread_res[offset / cpu] = pixel_color;
+                    }
+                }
+
+                thread_res
+            });
+
+            handles.push(t);
+        }
+
+        let mut pixels = vec![0; engine.canvas_width * engine.canvas_height * 3];
+
+        for (i, handle) in handles.into_iter().enumerate() {
+            let thread_res = handle.join().unwrap();
+
+            for (j, pixel) in thread_res.iter().enumerate() {
+                let offset = j * cpu as usize + i;
+
+                pixels[offset * 3] = (255.0 * pixel.x) as u8;
+                pixels[offset * 3 + 1] = (255.0 * pixel.y) as u8;
+                pixels[offset * 3 + 2] = (255.0 * pixel.z) as u8;
             }
         }
 
@@ -121,15 +155,14 @@ impl Engine {
     }
 
     pub fn save(
-        &self,
         filename: &str,
         pixels: &[u8],
-        width: &usize,
-        height: &usize,
+        width: usize,
+        height: usize,
     ) -> Result<(), std::io::Error> {
         let output = File::create(filename)?;
         let encoder = PNGEncoder::new(output);
-        encoder.encode(pixels, *width as u32, *height as u32, ColorType::RGB(8))?;
+        encoder.encode(pixels, width as u32, height as u32, ColorType::RGB(8))?;
         return Ok(());
     }
 
@@ -161,15 +194,15 @@ impl Engine {
         ray: &Ray,
         near_clipping_range: f32,
         far_clipping_range: f32,
-    ) -> Option<(Vector3<f32>, Rc<dyn ObjectsTrait>)> {
+    ) -> Option<(Vector3<f32>, &Box<dyn ObjectsTrait>)> {
         let mut min_t = std::f32::MAX;
-        let mut min_obj: Option<Rc<dyn ObjectsTrait>> = None;
+        let mut min_obj: Option<&Box<dyn ObjectsTrait>> = None;
 
         for object in &self.objects {
             // Find the nearest root.
             match object.intersects(&ray, near_clipping_range, far_clipping_range) {
                 Some(t) if (t < min_t) => {
-                    min_obj = Some(object.clone());
+                    min_obj = Some(&object);
                     min_t = t;
                 }
                 _ => {
@@ -187,7 +220,7 @@ impl Engine {
 
     pub fn get_color_ray(
         &self,
-        cast_result: Option<(Vector3<f32>, Rc<dyn ObjectsTrait>)>,
+        cast_result: Option<(Vector3<f32>, &Box<dyn ObjectsTrait>)>,
         ray: &Ray,
         depth: i32,
     ) -> Vector3<f32> {

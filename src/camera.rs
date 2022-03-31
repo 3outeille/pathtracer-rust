@@ -4,8 +4,6 @@ use std::f32::{consts::PI, INFINITY};
 use nalgebra::{Matrix3, Vector3};
 use serde::Deserialize;
 
-use crate::ray::Ray;
-
 fn default_canvas_fov_x() -> f32 {
     return 130.0;
 }
@@ -18,12 +16,12 @@ fn default_far_clipping_range() -> f32 {
     return INFINITY;
 }
 
-fn default_canvas_width() -> f32 {
-    return 1280.0;
+fn default_canvas_width() -> u32 {
+    return 1280;
 }
 
-fn default_canvas_height() -> f32 {
-    return 720.0;
+fn default_canvas_height() -> u32 {
+    return 720;
 }
 
 fn default_camera_right() -> Vector3<f32> {
@@ -44,14 +42,14 @@ pub struct Camera {
     #[serde(default = "default_far_clipping_range")]
     pub far_clipping_range: f32,
     #[serde(default = "default_canvas_width")]
-    pub canvas_width: f32,
+    pub canvas_width: u32,
     #[serde(default = "default_canvas_height")]
-    pub canvas_height: f32,
+    pub canvas_height: u32,
 }
 
 impl Camera {
     pub fn aspect_ratio(&self) -> f32 {
-        return self.canvas_width / self.canvas_height;
+        return self.canvas_width as f32 / self.canvas_height as f32;
     }
     pub fn viewport_width(&self) -> f32 {
         let fov_x_rad = ((self.fov_x_deg * 0.5) / 180.0) * PI; // radian

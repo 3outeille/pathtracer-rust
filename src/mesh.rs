@@ -3,10 +3,9 @@ use serde::Deserialize;
 use std::{
     fs::File,
     io::{self, BufRead, BufReader},
-    rc::Rc,
 };
 
-use crate::{objects::Triangle, engine::Engine, texture_material::TextureMaterial};
+use crate::{engine::Engine, objects::Triangle, texture_material::TextureMaterial};
 
 fn default_path() -> String {
     return "".to_string();
@@ -81,7 +80,7 @@ impl Mesh {
         faces: &Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)>,
     ) -> () {
         for (v0, v1, v2) in faces {
-            engine.add_object(Rc::new(Triangle {
+            engine.add_object(Box::new(Triangle {
                 v0: *v0,
                 v1: *v1,
                 v2: *v2,
