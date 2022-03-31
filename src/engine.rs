@@ -1,7 +1,9 @@
+use core::num;
 use std::f32::consts::PI;
 use std::f32::INFINITY;
 use std::fs::File;
-use std::sync::Arc;
+use std::sync::mpsc::Receiver;
+use std::sync::{mpsc, Arc};
 use std::thread;
 
 use image::png::PNGEncoder;
@@ -86,81 +88,107 @@ impl Engine {
         self.lights.push(light)
     }
 
-    pub fn render(self, cpu: usize, is_pathtracer: bool) -> Vec<u8> {
-        assert!((self.camera.canvas_width * self.camera.canvas_height) as usize % cpu == 0);
+    pub fn buffer_float_to_u8(float_buffer: &Vec<Vector3<f32>>) -> Vec<u8> {
+        let mut u8_buffer = vec![0; float_buffer.len() * 3];
+    
+        for (i, pixel) in float_buffer.iter().enumerate() {
+            u8_buffer[i * 3] = (pixel.x * 255.0) as u8;
+            u8_buffer[i * 3 + 1] = (pixel.y * 255.0) as u8;
+            u8_buffer[i * 3 + 2] = (pixel.z * 255.0) as u8;
+        }
+    
+        return u8_buffer;
+    }
 
-        let mut handles = vec![];
+    pub fn render(self, cpu: usize, is_pathtracer: bool) -> Vec<u8> {
+        Engine::buffer_float_to_u8(&self.stream_render(cpu, is_pathtracer, 1).recv().unwrap())
+    }
+
+    pub fn stream_render(
+        self,
+        cpu: usize,
+        is_pathtracer: bool,
+        num_samples: u32,
+    ) -> Receiver<Vec<Vector3<f32>>> {
+        assert!((self.camera.canvas_width * self.camera.canvas_height) as usize % cpu == 0);
 
         let engine = Arc::new(self);
 
-        for w in 0..cpu {
-            let engine = engine.clone();
+        let (sender, receiver) = mpsc::channel();
 
-            let t = thread::spawn(move || {
-                let mut thread_res =
-                    vec![
-                        Vector3::zeros();
-                        (engine.camera.canvas_width * engine.camera.canvas_height) as usize / cpu
-                    ];
+        thread::spawn(move || {
+            for _ in 0..num_samples {
+                let mut handles = vec![];
 
-                for y in 0..engine.canvas_height {
-                    for x in 0..engine.canvas_width {
-                        let offset = y * engine.canvas_width + x;
+                for w in 0..cpu {
+                    let engine = engine.clone();
 
-                        if offset % cpu != w {
-                            continue;
+                    let t = thread::spawn(move || {
+                        let mut thread_res = vec![
+                            Vector3::zeros();
+                            (engine.camera.canvas_width * engine.camera.canvas_height)
+                                as usize
+                                / cpu
+                        ];
+
+                        for y in 0..engine.canvas_height {
+                            for x in 0..engine.canvas_width {
+                                let offset = y * engine.canvas_width + x;
+
+                                if offset % cpu != w {
+                                    continue;
+                                }
+
+                                let pixel = engine.render_pixel(x, y, is_pathtracer);
+
+                                thread_res[offset / cpu] = pixel;
+                            }
                         }
 
-                        let ray = engine.camera.create_ray(x, y);
+                        thread_res
+                    });
 
-                        let cast_result = engine.cast_ray(
-                            &ray,
-                            engine.camera.near_clipping_range,
-                            engine.camera.far_clipping_range,
-                        );
+                    handles.push(t);
+                }
 
-                        let color = if is_pathtracer {
-                            let mut samples = vec![];
+                let mut pixels = vec![Vector3::zeros(); engine.canvas_width * engine.canvas_height];
 
-                            for _ in 0..1024 {
-                                samples.push(engine.color_ray_pathtracer(
-                                    cast_result,
-                                    &ray,
-                                    REFLECTION_DEPTH,
-                                ))
-                            }
+                for (i, handle) in handles.into_iter().enumerate() {
+                    let thread_res = handle.join().unwrap();
 
-                            samples.iter().fold(Vector3::zeros(), |a, b| a + b)
-                                / samples.len() as f32
-                        } else {
-                            engine.color_ray(cast_result, &ray, 0)
-                        };
-
-                        thread_res[offset / cpu] = color;
+                    for (j, pixel) in thread_res.into_iter().enumerate() {
+                        pixels[j * cpu as usize + i] = pixel;
                     }
                 }
 
-                thread_res
-            });
-
-            handles.push(t);
-        }
-
-        let mut pixels = vec![0; engine.canvas_width * engine.canvas_height * 3];
-
-        for (i, handle) in handles.into_iter().enumerate() {
-            let thread_res = handle.join().unwrap();
-
-            for (j, pixel) in thread_res.iter().enumerate() {
-                let offset = j * cpu as usize + i;
-
-                pixels[offset * 3] = (255.0 * pixel.x) as u8;
-                pixels[offset * 3 + 1] = (255.0 * pixel.y) as u8;
-                pixels[offset * 3 + 2] = (255.0 * pixel.z) as u8;
+                sender.send(pixels).unwrap();
             }
-        }
+        });
 
-        return pixels;
+        return receiver;
+    }
+
+    fn render_pixel(&self, x: usize, y: usize, is_pathtracer: bool) -> Vector3<f32> {
+        let ray = self.camera.create_ray(x, y);
+        let cast_result = self.cast_ray(
+            &ray,
+            self.camera.near_clipping_range,
+            self.camera.far_clipping_range,
+        );
+
+        let color = if is_pathtracer {
+            let mut samples = vec![];
+
+            for _ in 0..4 {
+                samples.push(self.color_ray_pathtracer(cast_result, &ray, REFLECTION_DEPTH))
+            }
+
+            samples.iter().fold(Vector3::zeros(), |a, b| a + b) / samples.len() as f32
+        } else {
+            self.color_ray(cast_result, &ray, 0)
+        };
+
+        return color;
     }
 
     pub fn save(
@@ -183,20 +211,6 @@ impl Engine {
     //         }
     //     }
     // }
-
-    pub fn render_scene_realtime(&self) {
-        // fltk = "1.2"
-
-        // let app = app::App::default();
-        // let mut wind = Window::new(100, 100, 400, 300, "Hello from rust");
-        // let mut frame = Frame::new(0, 0, 400, 200, "");
-        // let mut but = Button::new(160, 210, 80, 40, "Click me!");
-        // wind.end();
-        // wind.show();
-        // but.set_callback(move |_| frame.set_label("Hello World!")); // the closure capture is mutable borrow to our button
-        // app.run().unwrap();
-        todo!()
-    }
 
     pub fn cast_ray(
         &self,

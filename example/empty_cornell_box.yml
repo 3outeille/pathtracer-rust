@@ -4,8 +4,8 @@ camera:
   up: [0.0, 1.0, 0.0]
   fov_x_deg: 70.0 # degree
   near_clipping_range: 0.01
-  canvas_width: 1920
-  canvas_height: 1080
+  canvas_width: 3840
+  canvas_height: 2160
 
 triangles:
   # Ceiling bottom right
@@ -171,7 +171,7 @@ triangles:
 
 spheres:
   - center: [-1.0, 2.0, 1.0]
-    radius: 0.5
+    radius: 1
     textmat:
       color: [0.7, 0.2, 0.2] # red
       surface:
@@ -184,13 +184,13 @@ spheres:
           ns: 15.0
         reflection:
           kr: 0.3
-  - center: [1.0, 3.0, 0.5]
-    radius: 0.5
+  - center: [1.0, 2.5, 0.5]
+    radius: 1
     textmat:
-      color: [1.0, 1.0, 1.0] # red
+      color: [1.0, 1.0, 1.0] # white
       surface:
         emittance:
-          ke: 10
+          ke: 2
         ambient:
           ka: 1.0
         diffuse:

@@ -2,6 +2,7 @@ extern crate nalgebra;
 use std::f32::{consts::PI, INFINITY};
 
 use nalgebra::{Matrix3, Vector3};
+use rand::Rng;
 use serde::Deserialize;
 
 use crate::ray::Ray;
@@ -124,14 +125,15 @@ impl Camera {
     }
 
     pub fn create_ray(&self, x: usize, y: usize) -> Ray {
-        let u = (x as f32 * self.viewport_width()) / (self.canvas_width - 1) as f32;
-        let v = (y as f32 * self.viewport_height()) / (self.canvas_height - 1) as f32;
+        let mut rng = rand::thread_rng();
+        let dx = rng.gen::<f32>();
+        let dy = rng.gen::<f32>();
+
+        let u = ((x as f32 + dx) * self.viewport_width()) / (self.canvas_width - 1) as f32;
+        let v = ((y as f32 + dy) * self.viewport_height()) / (self.canvas_height - 1) as f32;
         let target = self.top_left_start() + u * self.right - v * self.up;
 
-        let ray = Ray::new(
-            self.origin,
-            (target - self.origin).normalize(),
-        );
+        let ray = Ray::new(self.origin, (target - self.origin).normalize());
         ray
     }
 }

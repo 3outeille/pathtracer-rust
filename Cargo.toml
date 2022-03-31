@@ -11,3 +11,4 @@ nalgebra = { version="0.25.4", features = ["serde-serialize"] }
 serde = "1.0.136"
 serde_yaml = "0.8.23"
 rand = "0.8.5"
+show-image = "0.10.1"
