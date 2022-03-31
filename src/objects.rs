@@ -17,7 +17,7 @@ pub trait ObjectsTrait: Sync + Send {
 
     fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32>;
 
-    fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>);
+    fn get_texture(&self) -> TextureMaterial;
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
@@ -60,8 +60,8 @@ impl ObjectsTrait for Sphere {
         return (point - self.center).normalize();
     }
 
-    fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>) {
-        return self.textmat.get_texture();
+    fn get_texture(&self) -> TextureMaterial {
+        return self.textmat;
     }
 }
 
@@ -98,8 +98,8 @@ impl ObjectsTrait for Plane {
         return self.normal;
     }
 
-    fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>) {
-        return self.textmat.get_texture();
+    fn get_texture(&self) -> TextureMaterial {
+        return self.textmat;
     }
 }
 
@@ -157,7 +157,7 @@ impl ObjectsTrait for Triangle {
         return -(self.v1 - self.v0).cross(&(self.v2 - self.v0)).normalize();
     }
 
-    fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>) {
-        return self.textmat.get_texture();
+    fn get_texture(&self) -> TextureMaterial {
+        return self.textmat;
     }
 }

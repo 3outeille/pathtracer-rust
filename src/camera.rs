@@ -4,6 +4,8 @@ use std::f32::{consts::PI, INFINITY};
 use nalgebra::{Matrix3, Vector3};
 use serde::Deserialize;
 
+use crate::ray::Ray;
+
 fn default_canvas_fov_x() -> f32 {
     return 130.0;
 }
@@ -119,5 +121,17 @@ impl Camera {
 
         self.up = (rotation_mat * self.up).normalize();
         self.forward = (rotation_mat * self.forward).normalize();
+    }
+
+    pub fn create_ray(&self, x: usize, y: usize) -> Ray {
+        let u = (x as f32 * self.viewport_width()) / (self.canvas_width - 1) as f32;
+        let v = (y as f32 * self.viewport_height()) / (self.canvas_height - 1) as f32;
+        let target = self.top_left_start() + u * self.right - v * self.up;
+
+        let ray = Ray::new(
+            self.origin,
+            (target - self.origin).normalize(),
+        );
+        ray
     }
 }

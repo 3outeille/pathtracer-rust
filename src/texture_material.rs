@@ -17,22 +17,10 @@ impl Default for TextureMaterial {
     }
 }
 
-impl TextureMaterial {
-    pub fn get_texture(&self) -> (f32, f32, f32, f32, f32, Vector3<f32>) {
-        return (
-            self.surface.ambient.ka,
-            self.surface.diffuse.kd,
-            self.surface.specular.ks,
-            self.surface.specular.ns,
-            self.surface.reflection.kr,
-            self.color,
-        );
-    }
-}
-
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Surface {
     pub ambient: Ambient,
+    pub emittance: Option<Emittance>,
     pub diffuse: Diffuse,
     pub specular: Specular,
     pub reflection: Reflection,
@@ -42,11 +30,17 @@ impl Default for Surface {
     fn default() -> Self {
         Self {
             ambient: Ambient::new(1.0),
+            emittance: None,
             diffuse: Diffuse::new(1.0),
             specular: Specular::new(1.0, 15.0),
             reflection: Reflection::new(0.5),
         }
     }
+}
+
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub struct Emittance {
+    pub ke: f32,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
