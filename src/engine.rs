@@ -1,10 +1,12 @@
+use std::f32::consts::PI;
 use std::fs::File;
 use std::sync::Arc;
 use std::thread;
 
 use image::png::PNGEncoder;
 use image::ColorType;
-use nalgebra::Vector3;
+use nalgebra::{Matrix3, Vector3};
+use rand::Rng;
 
 use crate::scene::Scene;
 use crate::texture_material::TextureMaterial;
@@ -115,9 +117,8 @@ impl Engine {
                             engine.camera.near_clipping_range,
                             engine.camera.far_clipping_range,
                         );
-                        
-                        
-                        let color = if is_pathtracer  {
+
+                        let color = if is_pathtracer {
                             engine.color_ray_pathtracer(cast_result, &ray, 0)
                         } else {
                             engine.color_ray(cast_result, &ray, 0)
@@ -303,65 +304,47 @@ impl Engine {
         let (intersection_point, obj) = cast_result.unwrap();
 
         let TextureMaterial { color, surface } = obj.get_texture();
+        let ambiant = color * 0.2;
+
         let normal = obj.get_normal(&intersection_point);
-        let reflected_dir =
-            (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
 
-        // Phong Model
-        let ambient = color * 0.2;
-        let mut diffuse = Vector3::zeros();
-        let mut specular = Vector3::zeros();
+        let diffuse = {
+            let random_sample = {
+                // Generate two floats with uniform distribution 0..1
+                let mut rng = rand::thread_rng();
+                let r1 = rng.gen::<f32>();
+                let r2 = rng.gen::<f32>();
 
-        for light in &self.lights {
-            let light_vec = light.position - intersection_point;
-            let light_dir = light_vec.normalize();
-            let light_distance = light_vec.norm();
-            let light_value = light.intensity * light.color;
+                // cos(theta) = u1 = y
+                // cos^2(theta) + sin^2(theta) = 1 -> sin(theta) = srtf(1 - cos^2(theta))
+                let sin_theta = (1. - r1 * r1).sqrt();
+                let phi = 2. * PI * r2;
+                let x = sin_theta * phi.cos();
+                let z = sin_theta * phi.sin();
 
-            let shadow_ray = Ray::new(intersection_point, light_dir + normal * EPSILON);
-
-            if self
-                .cast_ray(&shadow_ray, EPSILON, light_distance)
-                .is_some()
-            {
-                continue;
-            }
-
-            diffuse += {
-                let dot_prod = light_dir.dot(&normal).clamp(0.0, 1.0);
-                color.component_mul(&light_value) * dot_prod
+                Vector3::new(x, r1, z)
             };
 
-            specular += {
-                let dot_prod = light_dir
-                    .dot(&reflected_dir)
-                    .clamp(0.0, 1.0)
-                    .powf(surface.specular.ns);
-                light_value * dot_prod
+            let transform_matrix = {
+                let nt = if normal.x.is_normal() {
+                    Vector3::new(normal.y, -normal.x, 0.).normalize()
+                } else {
+                    Vector3::new(0., -normal.z, normal.y).normalize()
+                };
+
+                let nz = normal.cross(&nt);
+
+                Matrix3::new(
+                    nt.x, nz.x, normal.x, nt.y, nz.y, normal.y, nt.z, nz.z, normal.z,
+                )
             };
-        }
 
-        if depth >= REFLECTION_DEPTH {
-            return Vector3::zeros();
-        }
+            let world_sample = transform_matrix * random_sample;
 
-        let reflection = {
-            // When casting rays using previous intersection point, ray may hit under the surface
-            // due to numerical precision of the intersection point calculation (discriminant).
-            // The more rays are casted using previous intersection point, the more the error accumulate.
-            let reflected_ray = Ray::new(intersection_point + (normal * EPSILON), reflected_dir);
-
-            let cast_result = self.cast_ray(
-                &reflected_ray,
-                self.camera.near_clipping_range,
-                self.camera.far_clipping_range,
-            );
-
-            self.color_ray(cast_result, &reflected_ray, depth + 1)
+            // todo: need to cast ray
+            Vector3::zeros()
         };
 
-        return (surface.ambient.ka * ambient) + (surface.diffuse.kd * diffuse);
-        // + (surface.specular.ks * specular)
-        // + (surface.reflection.kr * reflection);
+        return (surface.ambient.ka * ambiant) + (surface.diffuse.kd * diffuse);
     }
 }
