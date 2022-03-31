@@ -94,7 +94,7 @@ impl ObjectsTrait for Plane {
         return Some(t);
     }
 
-    fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32> {
+    fn get_normal(&self, _point: &Vector3<f32>) -> Vector3<f32> {
         return self.normal;
     }
 
@@ -153,7 +153,7 @@ impl ObjectsTrait for Triangle {
         return Some(t);
     }
 
-    fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32> {
+    fn get_normal(&self, _point: &Vector3<f32>) -> Vector3<f32> {
         return -(self.v1 - self.v0).cross(&(self.v2 - self.v0)).normalize();
     }
 

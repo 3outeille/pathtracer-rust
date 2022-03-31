@@ -67,6 +67,7 @@ impl Camera {
             + ((self.viewport_height() / 2.0) * self.up);
     }
 
+    #[allow(dead_code)]
     pub fn rotate_around_up(&mut self, angle_degree: f32) -> () {
         let angle_rad = (angle_degree / 180.0) * PI;
 
@@ -86,6 +87,7 @@ impl Camera {
         self.forward = (rotation_mat * self.forward).normalize();
     }
 
+    #[allow(dead_code)]
     pub fn rotate_around_forward(&mut self, angle_degree: f32) -> () {
         let angle_rad = (angle_degree / 180.0) * PI;
 
@@ -105,6 +107,7 @@ impl Camera {
         self.right = (rotation_mat * self.right).normalize();
     }
 
+    #[allow(dead_code)]
     pub fn rotate_around_right(&mut self, angle_degree: f32) -> () {
         let angle_rad = (angle_degree / 180.0) * PI;
 

@@ -1,4 +1,3 @@
-use core::num;
 use std::f32::consts::PI;
 use std::f32::INFINITY;
 use std::fs::File;
@@ -100,14 +99,14 @@ impl Engine {
         return u8_buffer;
     }
 
-    pub fn render(self, cpu: usize, is_pathtracer: bool) -> Vec<u8> {
-        Engine::buffer_float_to_u8(&self.stream_render(cpu, is_pathtracer, 1).recv().unwrap())
+    #[allow(dead_code)]
+    pub fn render(self, cpu: usize) -> Vec<u8> {
+        Engine::buffer_float_to_u8(&self.stream_render(cpu, 1).recv().unwrap())
     }
 
     pub fn stream_render(
         self,
         cpu: usize,
-        is_pathtracer: bool,
         num_samples: u32,
     ) -> Receiver<Vec<Vector3<f32>>> {
         assert!((self.camera.canvas_width * self.camera.canvas_height) as usize % cpu == 0);
@@ -139,7 +138,7 @@ impl Engine {
                                     continue;
                                 }
 
-                                let pixel = engine.render_pixel(x, y, is_pathtracer);
+                                let pixel = engine.render_pixel(x, y);
 
                                 thread_res[offset / cpu] = pixel;
                             }
@@ -168,7 +167,7 @@ impl Engine {
         return receiver;
     }
 
-    fn render_pixel(&self, x: usize, y: usize, is_pathtracer: bool) -> Vector3<f32> {
+    fn render_pixel(&self, x: usize, y: usize) -> Vector3<f32> {
         let ray = self.camera.create_ray(x, y);
         let cast_result = self.cast_ray(
             &ray,
@@ -176,7 +175,7 @@ impl Engine {
             self.camera.far_clipping_range,
         );
 
-        let color = if is_pathtracer {
+        let color = {
             let mut samples = vec![];
 
             for _ in 0..4 {
@@ -184,8 +183,6 @@ impl Engine {
             }
 
             samples.iter().fold(Vector3::zeros(), |a, b| a + b) / samples.len() as f32
-        } else {
-            self.color_ray(cast_result, &ray, 0)
         };
 
         return color;
@@ -241,6 +238,7 @@ impl Engine {
         }
     }
 
+    #[allow(dead_code)]
     pub fn color_ray(
         &self,
         cast_result: Option<(Vector3<f32>, &Box<dyn ObjectsTrait>)>,
@@ -316,7 +314,7 @@ impl Engine {
     pub fn color_ray_pathtracer(
         &self,
         cast_result: Option<(Vector3<f32>, &Box<dyn ObjectsTrait>)>,
-        ray: &Ray,
+        _ray: &Ray,
         depth: u32,
     ) -> Vector3<f32> {
         if cast_result.is_none() || depth == 0 {
@@ -326,7 +324,7 @@ impl Engine {
         let (intersection_point, obj) = cast_result.unwrap();
 
         let TextureMaterial { color, surface } = obj.get_texture();
-        let ambiant = color * 0.2;
+        // let ambiant = color * 0.2;
 
         let normal = obj.get_normal(&intersection_point);
 
