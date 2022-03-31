@@ -190,7 +190,7 @@ spheres:
       color: [1.0, 1.0, 1.0] # red
       surface:
         emittance:
-          ke: 1.0
+          ke: 10
         ambient:
           ka: 1.0
         diffuse:

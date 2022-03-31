@@ -1,11 +1,12 @@
 use std::f32::consts::PI;
+use std::f32::INFINITY;
 use std::fs::File;
 use std::sync::Arc;
 use std::thread;
 
 use image::png::PNGEncoder;
 use image::ColorType;
-use nalgebra::{Matrix3, Vector3};
+use nalgebra::{Rotation3, Vector3};
 use rand::Rng;
 
 use crate::scene::Scene;
@@ -13,7 +14,7 @@ use crate::texture_material::TextureMaterial;
 use crate::{camera::Camera, light::PointLight, objects::ObjectsTrait, Ray};
 
 const EPSILON: f32 = 1e-3;
-const REFLECTION_DEPTH: i32 = 5;
+const REFLECTION_DEPTH: u32 = 5;
 
 pub struct Engine {
     pub camera: Camera,
@@ -119,7 +120,18 @@ impl Engine {
                         );
 
                         let color = if is_pathtracer {
-                            engine.color_ray_pathtracer(cast_result, &ray, 0)
+                            let mut samples = vec![];
+
+                            for _ in 0..1024 {
+                                samples.push(engine.color_ray_pathtracer(
+                                    cast_result,
+                                    &ray,
+                                    REFLECTION_DEPTH,
+                                ))
+                            }
+
+                            samples.iter().fold(Vector3::zeros(), |a, b| a + b)
+                                / samples.len() as f32
                         } else {
                             engine.color_ray(cast_result, &ray, 0)
                         };
@@ -219,9 +231,9 @@ impl Engine {
         &self,
         cast_result: Option<(Vector3<f32>, &Box<dyn ObjectsTrait>)>,
         ray: &Ray,
-        depth: i32,
+        depth: u32,
     ) -> Vector3<f32> {
-        if cast_result.is_none() {
+        if cast_result.is_none() || depth == 0 {
             return Vector3::zeros();
         }
 
@@ -266,10 +278,6 @@ impl Engine {
             };
         }
 
-        if depth >= REFLECTION_DEPTH {
-            return Vector3::zeros();
-        }
-
         let reflection = {
             // When casting rays using previous intersection point, ray may hit under the surface
             // due to numerical precision of the intersection point calculation (discriminant).
@@ -282,7 +290,7 @@ impl Engine {
                 self.camera.far_clipping_range,
             );
 
-            self.color_ray(cast_result, &reflected_ray, depth + 1)
+            self.color_ray(cast_result, &reflected_ray, depth - 1)
         };
 
         return (surface.ambient.ka * ambient)
@@ -295,9 +303,9 @@ impl Engine {
         &self,
         cast_result: Option<(Vector3<f32>, &Box<dyn ObjectsTrait>)>,
         ray: &Ray,
-        depth: i32,
+        depth: u32,
     ) -> Vector3<f32> {
-        if cast_result.is_none() {
+        if cast_result.is_none() || depth == 0 {
             return Vector3::zeros();
         }
 
@@ -309,7 +317,7 @@ impl Engine {
         let normal = obj.get_normal(&intersection_point);
 
         let diffuse = {
-            let random_sample = {
+            let sample = {
                 // Generate two floats with uniform distribution 0..1
                 let mut rng = rand::thread_rng();
                 let r1 = rng.gen::<f32>();
@@ -326,25 +334,29 @@ impl Engine {
             };
 
             let transform_matrix = {
-                let nt = if normal.x.is_normal() {
+                let nx = if normal.x.is_normal() {
                     Vector3::new(normal.y, -normal.x, 0.).normalize()
                 } else {
                     Vector3::new(0., -normal.z, normal.y).normalize()
                 };
 
-                let nz = normal.cross(&nt);
+                let nz = normal.cross(&nx);
 
-                Matrix3::new(
-                    nt.x, nz.x, normal.x, nt.y, nz.y, normal.y, nt.z, nz.z, normal.z,
-                )
+                Rotation3::from_basis_unchecked(&[nx, normal, nz])
             };
 
-            let world_sample = transform_matrix * random_sample;
+            let world_sample = transform_matrix * sample;
 
-            // todo: need to cast ray
-            Vector3::zeros()
+            let sample_ray = Ray::new(intersection_point + normal * EPSILON, world_sample);
+            let sample_cast_result = self.cast_ray(&sample_ray, 0., INFINITY);
+            let sample_color =
+                self.color_ray_pathtracer(sample_cast_result, &sample_ray, depth - 1);
+
+            color.component_mul(&(sample_color * surface.diffuse.kd))
         };
 
-        return (surface.ambient.ka * ambiant) + (surface.diffuse.kd * diffuse);
+        let emittance = surface.emittance.map(|e| e.ke).unwrap_or(0.) * color;
+
+        return emittance + diffuse;
     }
 }
