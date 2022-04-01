@@ -89,13 +89,13 @@ impl Engine {
 
     pub fn buffer_float_to_u8(float_buffer: &Vec<Vector3<f32>>) -> Vec<u8> {
         let mut u8_buffer = vec![0; float_buffer.len() * 3];
-    
+
         for (i, pixel) in float_buffer.iter().enumerate() {
             u8_buffer[i * 3] = (pixel.x * 255.0) as u8;
             u8_buffer[i * 3 + 1] = (pixel.y * 255.0) as u8;
             u8_buffer[i * 3 + 2] = (pixel.z * 255.0) as u8;
         }
-    
+
         return u8_buffer;
     }
 
@@ -104,11 +104,7 @@ impl Engine {
         Engine::buffer_float_to_u8(&self.stream_render(cpu, 1).recv().unwrap())
     }
 
-    pub fn stream_render(
-        self,
-        cpu: usize,
-        num_samples: u32,
-    ) -> Receiver<Vec<Vector3<f32>>> {
+    pub fn stream_render(self, cpu: usize, num_samples: u32) -> Receiver<Vec<Vector3<f32>>> {
         assert!((self.camera.canvas_width * self.camera.canvas_height) as usize % cpu == 0);
 
         let engine = Arc::new(self);
@@ -138,7 +134,15 @@ impl Engine {
                                     continue;
                                 }
 
-                                let pixel = engine.render_pixel(x, y);
+                                let mut samples = vec![];
+                                let ray = engine.camera.create_ray(x, y);
+
+                                for _ in 0..4 {
+                                    samples.push(engine.trace_ray(&ray, REFLECTION_DEPTH));
+                                }
+
+                                let pixel = samples.iter().fold(Vector3::zeros(), |a, b| a + b)
+                                    / samples.len() as f32;
 
                                 thread_res[offset / cpu] = pixel;
                             }
@@ -167,27 +171,6 @@ impl Engine {
         return receiver;
     }
 
-    fn render_pixel(&self, x: usize, y: usize) -> Vector3<f32> {
-        let ray = self.camera.create_ray(x, y);
-        let cast_result = self.cast_ray(
-            &ray,
-            self.camera.near_clipping_range,
-            self.camera.far_clipping_range,
-        );
-
-        let color = {
-            let mut samples = vec![];
-
-            for _ in 0..4 {
-                samples.push(self.color_ray_pathtracer(cast_result, &ray, REFLECTION_DEPTH))
-            }
-
-            samples.iter().fold(Vector3::zeros(), |a, b| a + b) / samples.len() as f32
-        };
-
-        return color;
-    }
-
     pub fn save(
         filename: &str,
         pixels: &[u8],
@@ -209,7 +192,7 @@ impl Engine {
     //     }
     // }
 
-    pub fn cast_ray(
+    pub fn get_closest_hit(
         &self,
         ray: &Ray,
         near_clipping_range: f32,
@@ -238,137 +221,150 @@ impl Engine {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn color_ray(
-        &self,
-        cast_result: Option<(Vector3<f32>, &Box<dyn ObjectsTrait>)>,
-        ray: &Ray,
-        depth: u32,
-    ) -> Vector3<f32> {
-        if cast_result.is_none() || depth == 0 {
-            return Vector3::zeros();
-        }
+    fn sample_hemisphere(&self, normal: Vector3<f32>) -> Vector3<f32> {
+        // Generate two floats with uniform distribution 0..1
+        let mut rng = rand::thread_rng();
+        let r1 = rng.gen::<f32>();
+        let r2 = rng.gen::<f32>();
 
-        let (intersection_point, obj) = cast_result.unwrap();
+        // cos(theta) = u1 = y
+        // cos^2(theta) + sin^2(theta) = 1 -> sin(theta) = srtf(1 - cos^2(theta))
+        let sin_theta = (1. - r1 * r1).sqrt();
+        let phi = 2. * PI * r2;
+        let x = sin_theta * phi.cos();
+        let z = sin_theta * phi.sin();
 
-        let TextureMaterial { color, surface } = obj.get_texture();
-        let normal = obj.get_normal(&intersection_point);
-        let reflected_dir =
-            (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
-
-        // Phong Model
-        let ambient = color * 0.2;
-        let mut diffuse = Vector3::zeros();
-        let mut specular = Vector3::zeros();
-
-        for light in &self.lights {
-            let light_vec = light.position - intersection_point;
-            let light_dir = light_vec.normalize();
-            let light_distance = light_vec.norm();
-            let light_value = light.intensity * light.color;
-
-            let shadow_ray = Ray::new(intersection_point, light_dir + normal * EPSILON);
-
-            if self
-                .cast_ray(&shadow_ray, EPSILON, light_distance)
-                .is_some()
-            {
-                continue;
-            }
-
-            diffuse += {
-                let dot_prod = light_dir.dot(&normal).clamp(0.0, 1.0);
-                color.component_mul(&light_value) * dot_prod
+        let transform_matrix = {
+            let nx = if normal.x.is_normal() {
+                Vector3::new(normal.y, -normal.x, 0.).normalize()
+            } else {
+                Vector3::new(0., -normal.z, normal.y).normalize()
             };
 
-            specular += {
-                let dot_prod = light_dir
-                    .dot(&reflected_dir)
-                    .clamp(0.0, 1.0)
-                    .powf(surface.specular.ns);
-                light_value * dot_prod
-            };
-        }
+            let nz = normal.cross(&nx);
 
-        let reflection = {
-            // When casting rays using previous intersection point, ray may hit under the surface
-            // due to numerical precision of the intersection point calculation (discriminant).
-            // The more rays are casted using previous intersection point, the more the error accumulate.
-            let reflected_ray = Ray::new(intersection_point + (normal * EPSILON), reflected_dir);
-
-            let cast_result = self.cast_ray(
-                &reflected_ray,
-                self.camera.near_clipping_range,
-                self.camera.far_clipping_range,
-            );
-
-            self.color_ray(cast_result, &reflected_ray, depth - 1)
+            Rotation3::from_basis_unchecked(&[nx, normal, nz])
         };
 
-        return (surface.ambient.ka * ambient)
-            + (surface.diffuse.kd * diffuse)
-            + (surface.specular.ks * specular)
-            + (surface.reflection.kr * reflection);
+        return transform_matrix * Vector3::new(x, r1, z);
     }
 
-    pub fn color_ray_pathtracer(
-        &self,
-        cast_result: Option<(Vector3<f32>, &Box<dyn ObjectsTrait>)>,
-        _ray: &Ray,
-        depth: u32,
-    ) -> Vector3<f32> {
-        if cast_result.is_none() || depth == 0 {
-            return Vector3::zeros();
-        }
+    pub fn trace_ray(&self, ray: &Ray, depth: u32) -> Vector3<f32> {
+        match self.get_closest_hit(
+            &ray,
+            self.camera.near_clipping_range,
+            self.camera.far_clipping_range,
+        ) {
+            None => Vector3::<f32>::zeros(),
+            Some((intersection_point, obj)) => {
+                if depth == 0 {
+                    return Vector3::zeros();
+                }
 
-        let (intersection_point, obj) = cast_result.unwrap();
-
-        let TextureMaterial { color, surface } = obj.get_texture();
-        // let ambiant = color * 0.2;
-
-        let normal = obj.get_normal(&intersection_point);
-
-        let diffuse = {
-            let sample = {
-                // Generate two floats with uniform distribution 0..1
-                let mut rng = rand::thread_rng();
-                let r1 = rng.gen::<f32>();
-                let r2 = rng.gen::<f32>();
-
-                // cos(theta) = u1 = y
-                // cos^2(theta) + sin^2(theta) = 1 -> sin(theta) = srtf(1 - cos^2(theta))
-                let sin_theta = (1. - r1 * r1).sqrt();
-                let phi = 2. * PI * r2;
-                let x = sin_theta * phi.cos();
-                let z = sin_theta * phi.sin();
-
-                Vector3::new(x, r1, z)
-            };
-
-            let transform_matrix = {
-                let nx = if normal.x.is_normal() {
-                    Vector3::new(normal.y, -normal.x, 0.).normalize()
-                } else {
-                    Vector3::new(0., -normal.z, normal.y).normalize()
+                let TextureMaterial { color, surface } = obj.get_texture();
+                // let ambiant = color * 0.2;
+                let normal = obj.get_normal(&intersection_point);
+        
+                let direct_lightning = {
+                    // TODO: Add light source
+                    let emittance = color * surface.emittance.map(|e| e.ke).unwrap_or(0.);
+                    emittance
                 };
+        
+                let indirect_lightning = {
+                    let diffuse = {
+                        let world_sample = self.sample_hemisphere(normal);
+        
+                        // DRAFT:
+                        // wi, pdf =  sample_hemisphere(normal)
+                        // BRDF = surface.get_brdf(normal, wo, wi)
+                        // let sample_ray = Ray::new(intersection_point + normal * EPSILON, world_sample);
+                        // color.component_mul(&(BRDF * 1/pdf * self.trace_ray(sample_cast_result, &sample_ray, depth - 1);
+        
+                        let sample_ray = Ray::new(intersection_point + normal * EPSILON, world_sample);
+                        let sample_color = self.trace_ray(&sample_ray, depth - 1);
+                        color.component_mul(&(sample_color * surface.diffuse.kd))
 
-                let nz = normal.cross(&nx);
-
-                Rotation3::from_basis_unchecked(&[nx, normal, nz])
-            };
-
-            let world_sample = transform_matrix * sample;
-
-            let sample_ray = Ray::new(intersection_point + normal * EPSILON, world_sample);
-            let sample_cast_result = self.cast_ray(&sample_ray, 0., INFINITY);
-            let sample_color =
-                self.color_ray_pathtracer(sample_cast_result, &sample_ray, depth - 1);
-
-            color.component_mul(&(sample_color * surface.diffuse.kd))
-        };
-
-        let emittance = surface.emittance.map(|e| e.ke).unwrap_or(0.) * color;
-
-        return emittance + diffuse;
+                    };
+        
+                    diffuse
+                };
+        
+                return direct_lightning + indirect_lightning;
+            }
+        }
     }
+
+    // #[allow(dead_code)]
+    // pub fn color_ray(
+    //     &self,
+    //     cast_result: Option<(Vector3<f32>, &Box<dyn ObjectsTrait>)>,
+    //     ray: &Ray,
+    //     depth: u32,
+    // ) -> Vector3<f32> {
+    //     if cast_result.is_none() || depth == 0 {
+    //         return Vector3::zeros();
+    //     }
+
+    //     let (intersection_point, obj) = cast_result.unwrap();
+
+    //     let TextureMaterial { color, surface } = obj.get_texture();
+    //     let normal = obj.get_normal(&intersection_point);
+    //     let reflected_dir =
+    //         (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
+
+    //     // Phong Model
+    //     let ambient = color * 0.2;
+    //     let mut diffuse = Vector3::zeros();
+    //     let mut specular = Vector3::zeros();
+
+    //     for light in &self.lights {
+    //         let light_vec = light.position - intersection_point;
+    //         let light_dir = light_vec.normalize();
+    //         let light_distance = light_vec.norm();
+    //         let light_value = light.intensity * light.color;
+
+    //         let shadow_ray = Ray::new(intersection_point, light_dir + normal * EPSILON);
+
+    //         if self
+    //             .cast_ray(&shadow_ray, EPSILON, light_distance)
+    //             .is_some()
+    //         {
+    //             continue;
+    //         }
+
+    //         diffuse += {
+    //             let dot_prod = light_dir.dot(&normal).clamp(0.0, 1.0);
+    //             color.component_mul(&light_value) * dot_prod
+    //         };
+
+    //         specular += {
+    //             let dot_prod = light_dir
+    //                 .dot(&reflected_dir)
+    //                 .clamp(0.0, 1.0)
+    //                 .powf(surface.specular.ns);
+    //             light_value * dot_prod
+    //         };
+    //     }
+
+    //     let reflection = {
+    //         // When casting rays using previous intersection point, ray may hit under the surface
+    //         // due to numerical precision of the intersection point calculation (discriminant).
+    //         // The more rays are casted using previous intersection point, the more the error accumulate.
+    //         let reflected_ray = Ray::new(intersection_point + (normal * EPSILON), reflected_dir);
+
+    //         let cast_result = self.cast_ray(
+    //             &reflected_ray,
+    //             self.camera.near_clipping_range,
+    //             self.camera.far_clipping_range,
+    //         );
+
+    //         self.color_ray(cast_result, &reflected_ray, depth - 1)
+    //     };
+
+    //     return (surface.ambient.ka * ambient)
+    //         + (surface.diffuse.kd * diffuse)
+    //         + (surface.specular.ks * specular)
+    //         + (surface.reflection.kr * reflection);
+    // }
 }
