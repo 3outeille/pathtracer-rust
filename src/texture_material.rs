@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use nalgebra::Vector3;
 use serde::Deserialize;
 
@@ -57,7 +59,7 @@ impl Surface {
         // BDRF = kd * diffuse + ks * specular
         let brdf = {
             // Diffuse: Lambert
-            let diffuse = Vector3::new(1., 1., 1.);
+            let diffuse = Vector3::new(1. / PI, 1. / PI, 1. / PI);
 
             // Specular: Cook-Torrance BRDF = DFG / (4(n \cdot wi)(n \cdot wo))
             let specular = Vector3::zeros();

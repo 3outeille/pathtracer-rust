@@ -184,13 +184,13 @@ spheres:
           ns: 15.0
         reflection:
           kr: 0.3
-  - center: [1.0, 2.5, 0.5]
+  - center: [0.0, 4.2, 0.5]
     radius: 1
     textmat:
       color: [1.0, 1.0, 1.0] # white
       surface:
         emittance:
-          ke: 2
+          ke: 7
         ambient:
           ka: 1.0
         diffuse:
