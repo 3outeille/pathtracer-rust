@@ -253,9 +253,9 @@ impl Engine {
 
         let world_sample = transform_matrix * sample;
 
-        let pdf = 1. / 2. * PI ;
+        let pdf = 1. / (2. * PI) ;
 
-        return (world_sample, world_sample.y, pdf);
+        return (world_sample, sample.y, pdf);
     }
 
     pub fn trace_ray(&self, ray: &Ray, depth: u32) -> Vector3<f32> {
@@ -286,7 +286,7 @@ impl Engine {
                     let bsdf = surface.get_bsdf(normal, wo, wi);
 
                     let sample_ray = Ray::new(intersection_point_dir + normal * EPSILON, wi);
-                    let sample_color = cos_theta * self.trace_ray(&sample_ray, depth - 1) * (1. / pdf);
+                    let sample_color = cos_theta * self.trace_ray(&sample_ray, depth - 1) / pdf;
                     let bsdf_color = bsdf.component_mul(&(sample_color));
 
                     color.component_mul(&(bsdf_color))
