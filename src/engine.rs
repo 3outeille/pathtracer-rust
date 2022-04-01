@@ -135,9 +135,9 @@ impl Engine {
                                 }
 
                                 let mut samples = vec![];
-                                let ray = engine.camera.create_ray(x, y);
 
                                 for _ in 0..4 {
+                                    let ray = engine.camera.create_ray(x, y);
                                     samples.push(engine.trace_ray(&ray, REFLECTION_DEPTH));
                                 }
 
@@ -221,32 +221,39 @@ impl Engine {
         }
     }
 
-    fn sample_hemisphere(&self, normal: Vector3<f32>) -> Vector3<f32> {
-        // Generate two floats with uniform distribution 0..1
-        let mut rng = rand::thread_rng();
-        let r1 = rng.gen::<f32>();
-        let r2 = rng.gen::<f32>();
+    fn sample_hemisphere(&self, normal: Vector3<f32>) -> (Vector3<f32>, f32) {
+        let world_sample = {
+            // Generate two floats with uniform distribution 0..1
+            let mut rng = rand::thread_rng();
+            let r1 = rng.gen::<f32>();
+            let r2 = rng.gen::<f32>();
 
-        // cos(theta) = u1 = y
-        // cos^2(theta) + sin^2(theta) = 1 -> sin(theta) = srtf(1 - cos^2(theta))
-        let sin_theta = (1. - r1 * r1).sqrt();
-        let phi = 2. * PI * r2;
-        let x = sin_theta * phi.cos();
-        let z = sin_theta * phi.sin();
+            // cos(theta) = u1 = y
+            // cos^2(theta) + sin^2(theta) = 1 -> sin(theta) = srtf(1 - cos^2(theta))
+            let sin_theta = (1. - r1 * r1).sqrt();
+            let phi = 2. * PI * r2;
+            let x = sin_theta * phi.cos();
+            let z = sin_theta * phi.sin();
 
-        let transform_matrix = {
-            let nx = if normal.x.is_normal() {
-                Vector3::new(normal.y, -normal.x, 0.).normalize()
-            } else {
-                Vector3::new(0., -normal.z, normal.y).normalize()
+            // Rotate sample direction to world coordinate
+            let transform_matrix = {
+                let nx = if normal.x.is_normal() {
+                    Vector3::new(normal.y, -normal.x, 0.).normalize()
+                } else {
+                    Vector3::new(0., -normal.z, normal.y).normalize()
+                };
+
+                let nz = normal.cross(&nx);
+
+                Rotation3::from_basis_unchecked(&[nx, normal, nz])
             };
 
-            let nz = normal.cross(&nx);
-
-            Rotation3::from_basis_unchecked(&[nx, normal, nz])
+            transform_matrix * Vector3::new(x, r1, z)
         };
 
-        return transform_matrix * Vector3::new(x, r1, z);
+        let pdf = { 1. };
+
+        return (world_sample, pdf);
     }
 
     pub fn trace_ray(&self, ray: &Ray, depth: u32) -> Vector3<f32> {
@@ -256,40 +263,33 @@ impl Engine {
             self.camera.far_clipping_range,
         ) {
             None => Vector3::<f32>::zeros(),
-            Some((intersection_point, obj)) => {
+            Some((intersection_point_dir, obj)) => {
                 if depth == 0 {
                     return Vector3::zeros();
                 }
 
                 let TextureMaterial { color, surface } = obj.get_texture();
                 // let ambiant = color * 0.2;
-                let normal = obj.get_normal(&intersection_point);
-        
+                let normal = obj.get_normal(&intersection_point_dir);
+                let wo = (-intersection_point_dir).normalize();
+
                 let direct_lightning = {
                     // TODO: Add light source
                     let emittance = color * surface.emittance.map(|e| e.ke).unwrap_or(0.);
                     emittance
                 };
-        
-                let indirect_lightning = {
-                    let diffuse = {
-                        let world_sample = self.sample_hemisphere(normal);
-        
-                        // DRAFT:
-                        // wi, pdf =  sample_hemisphere(normal)
-                        // BRDF = surface.get_brdf(normal, wo, wi)
-                        // let sample_ray = Ray::new(intersection_point + normal * EPSILON, world_sample);
-                        // color.component_mul(&(BRDF * 1/pdf * self.trace_ray(sample_cast_result, &sample_ray, depth - 1);
-        
-                        let sample_ray = Ray::new(intersection_point + normal * EPSILON, world_sample);
-                        let sample_color = self.trace_ray(&sample_ray, depth - 1);
-                        color.component_mul(&(sample_color * surface.diffuse.kd))
 
-                    };
-        
-                    diffuse
+                let indirect_lightning = {
+                    let (wi, pdf) = self.sample_hemisphere(normal);
+                    let bsdf = surface.get_bsdf(normal, wo, wi);
+
+                    let sample_ray = Ray::new(intersection_point_dir + normal * EPSILON, wi);
+                    let sample_color =
+                        bsdf.component_mul(&(self.trace_ray(&sample_ray, depth - 1) * (1. / pdf)));
+
+                    color.component_mul(&(sample_color))
                 };
-        
+
                 return direct_lightning + indirect_lightning;
             }
         }
