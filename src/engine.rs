@@ -1,5 +1,4 @@
 use std::f32::consts::PI;
-use std::f32::INFINITY;
 use std::fs::File;
 use std::sync::mpsc::Receiver;
 use std::sync::{mpsc, Arc};
@@ -15,7 +14,7 @@ use crate::texture_material::TextureMaterial;
 use crate::{camera::Camera, light::PointLight, objects::ObjectsTrait, Ray};
 
 const EPSILON: f32 = 1e-3;
-const REFLECTION_DEPTH: u32 = 5;
+const REFLECTION_DEPTH: u32 = 4;
 
 pub struct Engine {
     pub camera: Camera,
@@ -136,7 +135,7 @@ impl Engine {
 
                                 let mut samples = vec![];
 
-                                for _ in 0..4 {
+                                for _ in 0..16 {
                                     let ray = engine.camera.create_ray(x, y);
                                     samples.push(engine.trace_ray(&ray, REFLECTION_DEPTH));
                                 }
@@ -221,7 +220,7 @@ impl Engine {
         }
     }
 
-    fn sample_hemisphere(&self, normal: Vector3<f32>) -> (Vector3<f32>, f32, f32) {
+    fn sample_hemisphere(&self, normal: Vector3<f32>) -> (Vector3<f32>, f32) {
         let sample = {
             // Generate two floats with uniform distribution 0..1
             let mut rng = rand::thread_rng();
@@ -253,9 +252,7 @@ impl Engine {
 
         let world_sample = transform_matrix * sample;
 
-        let pdf = 1. / (2. * PI) ;
-
-        return (world_sample, sample.y, pdf);
+        return (world_sample, sample.y);
     }
 
     pub fn trace_ray(&self, ray: &Ray, depth: u32) -> Vector3<f32> {
@@ -265,15 +262,14 @@ impl Engine {
             self.camera.far_clipping_range,
         ) {
             None => Vector3::<f32>::zeros(),
-            Some((intersection_point_dir, obj)) => {
+            Some((intersection_point, obj)) => {
                 if depth == 0 {
                     return Vector3::zeros();
                 }
 
                 let TextureMaterial { color, surface } = obj.get_texture();
                 // let ambiant = color * 0.2;
-                let normal = obj.get_normal(&intersection_point_dir);
-                let wo = (-intersection_point_dir).normalize();
+                let normal = obj.get_normal(&intersection_point);
 
                 let direct_lightning = {
                     // TODO: Add light source
@@ -282,17 +278,28 @@ impl Engine {
                 };
 
                 let indirect_lightning = {
-                    let (wi, cos_theta, pdf) = self.sample_hemisphere(normal);
-                    let bsdf = surface.get_bsdf(normal, wo, wi);
+                    let (wi, cos_theta) = self.sample_hemisphere(normal);
 
-                    let sample_ray = Ray::new(intersection_point_dir + normal * EPSILON, wi);
-                    let sample_color = cos_theta * self.trace_ray(&sample_ray, depth - 1) / pdf;
-                    let bsdf_color = bsdf.component_mul(&(sample_color));
+                    let sample_ray = Ray::new(intersection_point + normal * EPSILON, wi);
+                    let sample_color = cos_theta * self.trace_ray(&sample_ray, depth - 1);
 
-                    color.component_mul(&(bsdf_color))
+                    surface.diffuse.kd * color.component_mul(&sample_color)
                 };
 
-                return direct_lightning + indirect_lightning;
+                let reflection = if surface.reflection.kr > 0. {
+                    let reflected_dir =
+                        (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
+
+                    let reflected_ray =
+                        Ray::new(intersection_point + (normal * EPSILON), reflected_dir);
+
+                    surface.reflection.kr
+                        * color.component_mul(&self.trace_ray(&reflected_ray, depth - 1))
+                } else {
+                    Vector3::zeros()
+                };
+
+                return direct_lightning + indirect_lightning + reflection;
             }
         }
     }

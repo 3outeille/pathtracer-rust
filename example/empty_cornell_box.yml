@@ -1,11 +1,11 @@
 camera:
-  origin: [0.0, 2.0, -8.0]
+  origin: [0.0, 2.0, -4.0]
   forward: [0.0, 0.0, 1.0]
   up: [0.0, 1.0, 0.0]
   fov_x_deg: 70.0 # degree
   near_clipping_range: 0.01
-  canvas_width: 1920
-  canvas_height: 1080
+  canvas_width: 540
+  canvas_height: 540
 
 triangles:
   # Ceiling bottom right
@@ -23,7 +23,7 @@ triangles:
           ks: 1.0
           ns: 15.0
         reflection:
-          kr: 0.3
+          kr: 0
   # Ceiling top left
   - v0: [-2.0, 4.0, -2.0]
     v1: [-2.0, 4.0, 2.0] 
@@ -39,7 +39,7 @@ triangles:
           ks: 1.0
           ns: 15.0
         reflection:
-          kr: 0.3
+          kr: 0
   # Floor bottom right
   - v0: [2.0, 0.0, 2.0]
     v1: [-2.0, 0.0, -2.0]
@@ -56,7 +56,7 @@ triangles:
           ks: 1.0
           ns: 15.0
         reflection:
-          kr: 0.3
+          kr: 0
   # Floor top left
   - v0: [2.0, 0.0, 2.0]
     v1: [-2.0, 0.0, 2.0]
@@ -73,7 +73,7 @@ triangles:
           ks: 1.0
           ns: 15.0
         reflection:
-          kr: 0.3
+          kr: 0
   # Left wall bottom left
   - v0: [-2.0, 4.0, -2.0]
     v1: [-2.0, 0.0, -2.0]
@@ -89,7 +89,7 @@ triangles:
           ks: 1.0
           ns: 15.0
         reflection:
-          kr: 0.3
+          kr: 0
   # Left wall top right
   - v0: [-2.0, 4.0, 2.0]
     v1: [-2.0, 4.0, -2.0]
@@ -105,7 +105,7 @@ triangles:
           ks: 1.0
           ns: 15.0
         reflection:
-          kr: 0.3
+          kr: 0
   # Back wall bottom right
   - v0: [2.0, 4.0, 2.0]
     v1: [-2.0, 0.0, 2.0]
@@ -153,7 +153,7 @@ triangles:
           ks: 1.0
           ns: 15.0
         reflection:
-          kr: 0.3
+          kr: 0
   # Right wall top left
   - v0: [2.0, 0.0, 2.0]
     v1: [2.0, 4.0, -2.0]
@@ -169,7 +169,7 @@ triangles:
           ks: 1.0
           ns: 15.0
         reflection:
-          kr: 0.3
+          kr: 0
 
 spheres:
   - center: [-0.5, 2.0, 1.0]
@@ -199,8 +199,8 @@ spheres:
           ks: 1.0
           ns: 15.0
         reflection:
-          kr: 0.3
-  - center: [0.0, 4, -1]
+          kr: 0
+  - center: [0, 4, 0]
     radius: 1
     textmat:
       color: [1.0, 1.0, 1.0] # white
