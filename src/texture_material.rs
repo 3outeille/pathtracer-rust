@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct TextureMaterial {
-    pub color: Vector3<f32>,
+    pub color: Vector3<f64>,
     #[serde(default)]
     pub surface: Surface,
 }
@@ -24,6 +24,7 @@ pub struct Surface {
     pub diffuse: Diffuse,
     pub specular: Specular,
     pub reflection: Reflection,
+    pub transmission: Transmission,
 }
 
 impl Default for Surface {
@@ -34,6 +35,7 @@ impl Default for Surface {
             diffuse: Diffuse::new(1.0),
             specular: Specular::new(1.0, 15.0),
             reflection: Reflection::new(0.5),
+            transmission: Transmission::new(0.5),
         }
     }
 }
@@ -45,10 +47,10 @@ impl Default for Surface {
 //    */
 //     pub fn get_bsdf(
 //         &self,
-//         normal: Vector3<f32>,
-//         wi: Vector3<f32>,
-//         wo: Vector3<f32>,
-//     ) -> Vector3<f32> {
+//         normal: Vector3<f64>,
+//         wi: Vector3<f64>,
+//         wo: Vector3<f64>,
+//     ) -> Vector3<f64> {
 //         // BSDF = BTDF + BRDF
 
 //         // BTDF (transparence)
@@ -80,50 +82,61 @@ impl Default for Surface {
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Emittance {
-    pub ke: f32,
+    pub ke: f64,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Ambient {
-    pub ka: f32,
+    pub ka: f64,
 }
 
 impl Ambient {
-    pub fn new(ka: f32) -> Self {
+    pub fn new(ka: f64) -> Self {
         Self { ka }
     }
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Diffuse {
-    pub kd: f32,
+    pub kd: f64,
 }
 
 impl Diffuse {
-    pub fn new(kd: f32) -> Self {
+    pub fn new(kd: f64) -> Self {
         Self { kd }
     }
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Specular {
-    pub ks: f32,
-    pub ns: f32,
+    pub ks: f64,
+    pub ns: f64,
 }
 
 impl Specular {
-    pub fn new(ks: f32, ns: f32) -> Self {
+    pub fn new(ks: f64, ns: f64) -> Self {
         Self { ks, ns }
     }
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Reflection {
-    pub kr: f32,
+    pub kr: f64,
 }
 
 impl Reflection {
-    pub fn new(kr: f32) -> Self {
+    pub fn new(kr: f64) -> Self {
         Self { kr }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub struct Transmission {
+    pub kt: f64,
+}
+
+impl Transmission {
+    pub fn new(kt: f64) -> Self {
+        Self { kt }
     }
 }

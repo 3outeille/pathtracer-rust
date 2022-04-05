@@ -28,6 +28,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let scene: Scene = serde_yaml::from_reader(file)?;
 
     let engine = Engine::from_scene(&scene);
+    assert!(engine.camera.up.dot(&engine.camera.forward) == 0.);
+
     let (width, height) = (engine.canvas_width, engine.canvas_height);
 
     let receiver = engine.stream_render(cpu, 2048);

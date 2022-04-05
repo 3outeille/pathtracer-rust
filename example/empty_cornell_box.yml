@@ -1,8 +1,8 @@
 camera:
-  origin: [0.0, 2.0, -4.0]
+  origin: [0.0, 2.0, -8.0]
   forward: [0.0, 0.0, 1.0]
   up: [0.0, 1.0, 0.0]
-  fov_x_deg: 70.0 # degree
+  fov_x_deg: 45.0 # degree
   near_clipping_range: 0.01
   canvas_width: 540
   canvas_height: 540
@@ -24,6 +24,8 @@ triangles:
           ns: 15.0
         reflection:
           kr: 0
+        transmission:
+          kt: 0
   # Ceiling top left
   - v0: [-2.0, 4.0, -2.0]
     v1: [-2.0, 4.0, 2.0] 
@@ -40,6 +42,8 @@ triangles:
           ns: 15.0
         reflection:
           kr: 0
+        transmission:
+          kt: 0
   # Floor bottom right
   - v0: [2.0, 0.0, 2.0]
     v1: [-2.0, 0.0, -2.0]
@@ -57,6 +61,8 @@ triangles:
           ns: 15.0
         reflection:
           kr: 0
+        transmission:
+          kt: 0
   # Floor top left
   - v0: [2.0, 0.0, 2.0]
     v1: [-2.0, 0.0, 2.0]
@@ -74,6 +80,8 @@ triangles:
           ns: 15.0
         reflection:
           kr: 0
+        transmission:
+          kt: 0
   # Left wall bottom left
   - v0: [-2.0, 4.0, -2.0]
     v1: [-2.0, 0.0, -2.0]
@@ -90,6 +98,8 @@ triangles:
           ns: 15.0
         reflection:
           kr: 0
+        transmission:
+          kt: 0
   # Left wall top right
   - v0: [-2.0, 4.0, 2.0]
     v1: [-2.0, 4.0, -2.0]
@@ -106,6 +116,8 @@ triangles:
           ns: 15.0
         reflection:
           kr: 0
+        transmission:
+          kt: 0
   # Back wall bottom right
   - v0: [2.0, 4.0, 2.0]
     v1: [-2.0, 0.0, 2.0]
@@ -122,6 +134,8 @@ triangles:
           ns: 15.0
         reflection:
           kr: 0.3
+        transmission:
+          kt: 0
   # Back wall top left
   - v0: [2.0, 4.0, 2.0]
     v1: [-2.0, 4.0, 2.0]
@@ -138,6 +152,8 @@ triangles:
           ns: 15.0
         reflection:
           kr: 0.3
+        transmission:
+          kt: 0
   # Right wall bottom right
   - v0: [2.0, 0.0, -2.0]
     v1: [2.0, 4.0, -2.0]
@@ -154,6 +170,8 @@ triangles:
           ns: 15.0
         reflection:
           kr: 0
+        transmission:
+          kt: 0
   # Right wall top left
   - v0: [2.0, 0.0, 2.0]
     v1: [2.0, 4.0, -2.0]
@@ -170,12 +188,14 @@ triangles:
           ns: 15.0
         reflection:
           kr: 0
+        transmission:
+          kt: 0
 
 spheres:
   - center: [-0.5, 2.0, 1.0]
-    radius: 0.7
+    radius: 0.3
     textmat:
-      color: [0.7, 0.2, 0.2] # red
+      color: [0.7, 0.4, 0.2] # red
       surface:
         ambient:
           ka: 1.0
@@ -186,10 +206,12 @@ spheres:
           ns: 15.0
         reflection:
           kr: 0.3
+        transmission:
+          kt: 0
   - center: [1, 0.5, -0.7]
     radius: 0.4
     textmat:
-      color: [0.5, 0., 1.] # violet
+      color: [0.5, 1., 1.] # violet
       surface:
         ambient:
           ka: 1.0
@@ -200,6 +222,24 @@ spheres:
           ns: 15.0
         reflection:
           kr: 0
+        transmission:
+          kt: 0
+  - center: [0.2, 1, -2]
+    radius: 0.5
+    textmat:
+      color: [1, 1, 1] # transparent
+      surface:
+        ambient:
+          ka: 0
+        diffuse:
+          kd: 0
+        specular:
+          ks: 0
+          ns: 15
+        reflection:
+          kr: 0
+        transmission:
+          kt: 1
   - center: [0, 4, 0]
     radius: 1
     textmat:
@@ -216,5 +256,7 @@ spheres:
           ns: 1.0
         reflection:
           kr: 0.0
+        transmission:
+          kt: 0
 
 lights: []

@@ -30,12 +30,12 @@ impl Mesh {
 
     pub fn parse_obj_file(
         &self,
-    ) -> Result<Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)>, io::Error> {
+    ) -> Result<Vec<(Vector3<f64>, Vector3<f64>, Vector3<f64>)>, io::Error> {
         let f = File::open(&self.path)?;
         let f = BufReader::new(f);
 
-        let mut vertices: Vec<Vector3<f32>> = Vec::new();
-        let mut faces: Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)> = Vec::new();
+        let mut vertices: Vec<Vector3<f64>> = Vec::new();
+        let mut faces: Vec<(Vector3<f64>, Vector3<f64>, Vector3<f64>)> = Vec::new();
 
         for line in f.lines() {
             let line = line.unwrap();
@@ -49,8 +49,8 @@ impl Mesh {
             match tokens.next().unwrap() {
                 "v" => {
                     let xyz = tokens
-                        .map(|val| val.parse::<f32>().unwrap())
-                        .collect::<Vec<f32>>();
+                        .map(|val| val.parse::<f64>().unwrap())
+                        .collect::<Vec<f64>>();
 
                     vertices.push(Vector3::new(xyz[0], xyz[1], xyz[2]));
                 }
@@ -77,7 +77,7 @@ impl Mesh {
     pub fn triangularization(
         &self,
         engine: &mut Engine,
-        faces: &Vec<(Vector3<f32>, Vector3<f32>, Vector3<f32>)>,
+        faces: &Vec<(Vector3<f64>, Vector3<f64>, Vector3<f64>)>,
     ) -> () {
         for (v0, v1, v2) in faces {
             engine.add_object(Box::new(Triangle {

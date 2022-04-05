@@ -5,25 +5,25 @@ use serde::Deserialize;
 
 use {crate::ray::Ray, crate::texture_material::TextureMaterial};
 
-const EPSILON: f32 = 1e-6;
+const EPSILON: f64 = 1e-6;
 
 pub trait ObjectsTrait: Sync + Send {
     fn intersects(
         &self,
         ray: &Ray,
-        near_clipping_range: f32,
-        far_clipping_range: f32,
-    ) -> Option<f32>;
+        near_clipping_range: f64,
+        far_clipping_range: f64,
+    ) -> Option<f64>;
 
-    fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32>;
+    fn get_normal(&self, point: &Vector3<f64>) -> Vector3<f64>;
 
     fn get_texture(&self) -> TextureMaterial;
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Sphere {
-    pub center: Vector3<f32>,
-    pub radius: f32,
+    pub center: Vector3<f64>,
+    pub radius: f64,
     pub textmat: TextureMaterial,
 }
 
@@ -31,9 +31,9 @@ impl ObjectsTrait for Sphere {
     fn intersects(
         &self,
         ray: &Ray,
-        near_clipping_range: f32,
-        far_clipping_range: f32,
-    ) -> Option<f32> {
+        near_clipping_range: f64,
+        far_clipping_range: f64,
+    ) -> Option<f64> {
         let oc = ray.origin - self.center;
 
         let a = ray.direction.dot(&ray.direction);
@@ -56,7 +56,7 @@ impl ObjectsTrait for Sphere {
         return Some(root);
     }
 
-    fn get_normal(&self, point: &Vector3<f32>) -> Vector3<f32> {
+    fn get_normal(&self, point: &Vector3<f64>) -> Vector3<f64> {
         return (point - self.center).normalize();
     }
 
@@ -67,8 +67,8 @@ impl ObjectsTrait for Sphere {
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Plane {
-    pub center: Vector3<f32>,
-    pub normal: Vector3<f32>,
+    pub center: Vector3<f64>,
+    pub normal: Vector3<f64>,
     pub textmat: TextureMaterial,
 }
 
@@ -76,9 +76,9 @@ impl ObjectsTrait for Plane {
     fn intersects(
         &self,
         ray: &Ray,
-        near_clipping_range: f32,
-        far_clipping_range: f32,
-    ) -> Option<f32> {
+        near_clipping_range: f64,
+        far_clipping_range: f64,
+    ) -> Option<f64> {
         let denom = (-self.normal).dot(&ray.direction);
 
         if denom <= EPSILON {
@@ -94,7 +94,7 @@ impl ObjectsTrait for Plane {
         return Some(t);
     }
 
-    fn get_normal(&self, _point: &Vector3<f32>) -> Vector3<f32> {
+    fn get_normal(&self, _point: &Vector3<f64>) -> Vector3<f64> {
         return self.normal;
     }
 
@@ -105,9 +105,9 @@ impl ObjectsTrait for Plane {
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Triangle {
-    pub v0: Vector3<f32>,
-    pub v1: Vector3<f32>,
-    pub v2: Vector3<f32>,
+    pub v0: Vector3<f64>,
+    pub v1: Vector3<f64>,
+    pub v2: Vector3<f64>,
     pub textmat: TextureMaterial,
 }
 
@@ -115,15 +115,15 @@ impl ObjectsTrait for Triangle {
     fn intersects(
         &self,
         ray: &Ray,
-        near_clipping_range: f32,
-        far_clipping_range: f32,
-    ) -> Option<f32> {
+        near_clipping_range: f64,
+        far_clipping_range: f64,
+    ) -> Option<f64> {
         // Möller-Trumbore algorithm
 
         let v0v1 = self.v1 - self.v0;
         let v0v2 = self.v2 - self.v0;
         let p = (ray.direction).cross(&v0v2);
-        let det = v0v1.dot(&p) as f32;
+        let det = v0v1.dot(&p) as f64;
 
         if det > -EPSILON && det < EPSILON {
             return None; // Ray is parallel to triangle.
@@ -131,7 +131,7 @@ impl ObjectsTrait for Triangle {
 
         let inv_det = 1.0 / det;
         let s = ray.origin - self.v0;
-        let u = (s.dot(&p) * inv_det) as f32;
+        let u = (s.dot(&p) * inv_det) as f64;
 
         if u < 0.0 || u > 1.0 {
             return None;
@@ -144,7 +144,7 @@ impl ObjectsTrait for Triangle {
             return None;
         }
 
-        let t = v0v2.dot(&q) * inv_det as f32;
+        let t = v0v2.dot(&q) * inv_det as f64;
 
         if t < near_clipping_range || t > far_clipping_range {
             return None;
@@ -153,7 +153,7 @@ impl ObjectsTrait for Triangle {
         return Some(t);
     }
 
-    fn get_normal(&self, _point: &Vector3<f32>) -> Vector3<f32> {
+    fn get_normal(&self, _point: &Vector3<f64>) -> Vector3<f64> {
         return -(self.v1 - self.v0).cross(&(self.v2 - self.v0)).normalize();
     }
 

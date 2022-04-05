@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::f64::consts::PI;
 use std::fs::File;
 use std::sync::mpsc::Receiver;
 use std::sync::{mpsc, Arc};
@@ -13,7 +13,7 @@ use crate::scene::Scene;
 use crate::texture_material::TextureMaterial;
 use crate::{camera::Camera, light::PointLight, objects::ObjectsTrait, Ray};
 
-const EPSILON: f32 = 1e-3;
+const EPSILON: f64 = 1e-3;
 const REFLECTION_DEPTH: u32 = 4;
 
 pub struct Engine {
@@ -86,7 +86,7 @@ impl Engine {
         self.lights.push(light)
     }
 
-    pub fn buffer_float_to_u8(float_buffer: &Vec<Vector3<f32>>) -> Vec<u8> {
+    pub fn buffer_float_to_u8(float_buffer: &Vec<Vector3<f64>>) -> Vec<u8> {
         let mut u8_buffer = vec![0; float_buffer.len() * 3];
 
         for (i, pixel) in float_buffer.iter().enumerate() {
@@ -103,7 +103,7 @@ impl Engine {
         Engine::buffer_float_to_u8(&self.stream_render(cpu, 1).recv().unwrap())
     }
 
-    pub fn stream_render(self, cpu: usize, num_samples: u32) -> Receiver<Vec<Vector3<f32>>> {
+    pub fn stream_render(self, cpu: usize, num_samples: u32) -> Receiver<Vec<Vector3<f64>>> {
         assert!((self.camera.canvas_width * self.camera.canvas_height) as usize % cpu == 0);
 
         let engine = Arc::new(self);
@@ -141,7 +141,7 @@ impl Engine {
                                 }
 
                                 let pixel = samples.iter().fold(Vector3::zeros(), |a, b| a + b)
-                                    / samples.len() as f32;
+                                    / samples.len() as f64;
 
                                 thread_res[offset / cpu] = pixel;
                             }
@@ -194,10 +194,10 @@ impl Engine {
     pub fn get_closest_hit(
         &self,
         ray: &Ray,
-        near_clipping_range: f32,
-        far_clipping_range: f32,
-    ) -> Option<(Vector3<f32>, &Box<dyn ObjectsTrait>)> {
-        let mut min_t = std::f32::MAX;
+        near_clipping_range: f64,
+        far_clipping_range: f64,
+    ) -> Option<(Vector3<f64>, &Box<dyn ObjectsTrait>)> {
+        let mut min_t = std::f64::MAX;
         let mut min_obj: Option<&Box<dyn ObjectsTrait>> = None;
 
         for object in &self.objects {
@@ -220,12 +220,12 @@ impl Engine {
         }
     }
 
-    fn sample_hemisphere(&self, normal: Vector3<f32>) -> (Vector3<f32>, f32) {
+    fn sample_hemisphere(&self, normal: Vector3<f64>) -> (Vector3<f64>, f64) {
         let sample = {
             // Generate two floats with uniform distribution 0..1
             let mut rng = rand::thread_rng();
-            let r1 = rng.gen::<f32>();
-            let r2 = rng.gen::<f32>();
+            let r1 = rng.gen::<f64>();
+            let r2 = rng.gen::<f64>();
 
             // cos(theta) = u1 = y
             // cos^2(theta) + sin^2(theta) = 1 -> sin(theta) = srtf(1 - cos^2(theta))
@@ -255,13 +255,13 @@ impl Engine {
         return (world_sample, sample.y);
     }
 
-    pub fn trace_ray(&self, ray: &Ray, depth: u32) -> Vector3<f32> {
+    pub fn trace_ray(&self, ray: &Ray, depth: u32) -> Vector3<f64> {
         match self.get_closest_hit(
             &ray,
             self.camera.near_clipping_range,
             self.camera.far_clipping_range,
         ) {
-            None => Vector3::<f32>::zeros(),
+            None => Vector3::<f64>::zeros(),
             Some((intersection_point, obj)) => {
                 if depth == 0 {
                     return Vector3::zeros();
@@ -271,6 +271,9 @@ impl Engine {
                 // let ambiant = color * 0.2;
                 let normal = obj.get_normal(&intersection_point);
 
+                let going_into = normal.dot(&ray.direction) < 0.;
+                let relative_normal = if going_into { normal } else { -normal };
+
                 let direct_lightning = {
                     // TODO: Add light source
                     let emittance = color * surface.emittance.map(|e| e.ke).unwrap_or(0.);
@@ -278,9 +281,9 @@ impl Engine {
                 };
 
                 let indirect_lightning = {
-                    let (wi, cos_theta) = self.sample_hemisphere(normal);
+                    let (wi, cos_theta) = self.sample_hemisphere(relative_normal);
 
-                    let sample_ray = Ray::new(intersection_point + normal * EPSILON, wi);
+                    let sample_ray = Ray::new(intersection_point + relative_normal * EPSILON, wi);
                     let sample_color = cos_theta * self.trace_ray(&sample_ray, depth - 1);
 
                     surface.diffuse.kd * color.component_mul(&sample_color)
@@ -299,7 +302,51 @@ impl Engine {
                     Vector3::zeros()
                 };
 
-                return direct_lightning + indirect_lightning + reflection;
+                let refraction = if surface.transmission.kt > 0. {
+                    let (n_air, n_glass) = (1., 1.4);
+
+                    let n_ratio: f64 = if going_into {
+                        n_air / n_glass
+                    } else {
+                        n_glass / n_air
+                    };
+
+                    let cos_theta = -relative_normal.dot(&ray.direction);
+                    let sin_theta_sqr = 1. - cos_theta.powi(2);
+
+                    let sin_theta2_sqr = n_ratio.powi(2) * sin_theta_sqr;
+                    let cos_theta2_sqr = 1. - sin_theta2_sqr;
+
+                    if sin_theta2_sqr > 1. {
+                        // return total internal reflection
+                        let reflected_dir = (ray.direction
+                            - (2.0 * ray.direction.dot(&relative_normal) * relative_normal))
+                            .normalize();
+
+                        let reflected_ray = Ray::new(
+                            intersection_point + (relative_normal * EPSILON),
+                            reflected_dir,
+                        );
+
+                        return self.trace_ray(&reflected_ray, depth - 1);
+                    }
+
+                    // refracted ray direction
+                    let c1 = cos_theta;
+                    let c2 = cos_theta2_sqr.sqrt();
+                    let refracted_dir = ray.direction * n_ratio + normal * (n_ratio * c1 - c2);
+
+                    let refracted_ray = Ray::new(
+                        intersection_point - (relative_normal * EPSILON),
+                        refracted_dir,
+                    );
+
+                    surface.transmission.kt * self.trace_ray(&refracted_ray, depth)
+                } else {
+                    Vector3::zeros()
+                };
+
+                return direct_lightning + indirect_lightning + reflection + refraction;
             }
         }
     }
@@ -307,10 +354,10 @@ impl Engine {
     // #[allow(dead_code)]
     // pub fn color_ray(
     //     &self,
-    //     cast_result: Option<(Vector3<f32>, &Box<dyn ObjectsTrait>)>,
+    //     cast_result: Option<(Vector3<f64>, &Box<dyn ObjectsTrait>)>,
     //     ray: &Ray,
     //     depth: u32,
-    // ) -> Vector3<f32> {
+    // ) -> Vector3<f64> {
     //     if cast_result.is_none() || depth == 0 {
     //         return Vector3::zeros();
     //     }

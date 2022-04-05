@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct PointLight {
-    pub position: Vector3<f32>,
-    pub intensity: f32,
-    pub color: Vector3<f32>
+    pub position: Vector3<f64>,
+    pub intensity: f64,
+    pub color: Vector3<f64>
 }
