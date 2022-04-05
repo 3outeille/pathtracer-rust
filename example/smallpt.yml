@@ -141,9 +141,9 @@ spheres:
           kd: 0
         specular:
           ks: 0
-          ns: 15.0
+          ns: 0
         reflection:
-          kr: 0
+          kr: 0.1
         emittance:
           ke: 0
         transmission:

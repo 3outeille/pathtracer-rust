@@ -328,20 +328,20 @@ impl Engine {
                             reflected_dir,
                         );
 
-                        return self.trace_ray(&reflected_ray, depth - 1);
+                        return surface.reflection.kr * color.component_mul(&self.trace_ray(&reflected_ray, depth - 1));
                     }
 
                     // refracted ray direction
                     let c1 = cos_theta;
                     let c2 = cos_theta2_sqr.sqrt();
-                    let refracted_dir = ray.direction * n_ratio + normal * (n_ratio * c1 - c2);
+                    let refracted_dir = ray.direction * n_ratio + relative_normal * (n_ratio * c1 - c2);
 
                     let refracted_ray = Ray::new(
-                        intersection_point - (relative_normal * EPSILON),
+                        intersection_point + (relative_normal * EPSILON),
                         refracted_dir,
                     );
 
-                    surface.transmission.kt * self.trace_ray(&refracted_ray, depth)
+                    surface.transmission.kt * self.trace_ray(&refracted_ray, depth - 1)
                 } else {
                     Vector3::zeros()
                 };
