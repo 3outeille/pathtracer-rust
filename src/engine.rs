@@ -303,7 +303,7 @@ impl Engine {
                 };
 
                 let refraction = if surface.transmission.kt > 0. {
-                    let (n_air, n_glass) = (1., 1.4);
+                    let (n_air, n_glass) = (1., 1.5);
 
                     let n_ratio: f64 = if going_into {
                         n_air / n_glass
