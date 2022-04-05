@@ -115,19 +115,16 @@ impl Camera {
         let width = self.canvas_width;
         let height = self.canvas_height;
 
-        let up = self.up;
-        let front = self.forward;
-        let right = up.cross(&front);
-
         let fov = self.fov_x_deg * PI / 180.;
 
         let viewport_width = (fov / 2.).tan();
         let viewport_height = viewport_width * (height - 1) as f64 / (width - 1) as f64;
 
-        let step_x = ((2. * viewport_width) / (width - 1) as f64) * right;
-        let step_y = ((2. * viewport_height) / (height - 1) as f64) * -up;
+        let step_x = ((2. * viewport_width) / (width - 1) as f64) * self.right;
+        let step_y = ((2. * viewport_height) / (height - 1) as f64) * -self.up;
 
-        let viewport_top_left = front - viewport_width * right + viewport_height * up;
+        let viewport_top_left =
+            self.forward - viewport_width * self.right + viewport_height * self.up;
 
         let mut rng = rand::thread_rng();
         let dx = rng.gen::<f64>() - 0.5;
