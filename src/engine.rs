@@ -13,7 +13,7 @@ use crate::scene::Scene;
 use crate::texture_material::TextureMaterial;
 use crate::{camera::Camera, light::PointLight, objects::ObjectsTrait, Ray};
 
-const EPSILON: f64 = 1e-3;
+const EPSILON: f64 = 1e-4;
 const REFLECTION_DEPTH: u32 = 4;
 
 pub struct Engine {
@@ -89,10 +89,12 @@ impl Engine {
     pub fn buffer_float_to_u8(float_buffer: &Vec<Vector3<f64>>) -> Vec<u8> {
         let mut u8_buffer = vec![0; float_buffer.len() * 3];
 
+        let apply_gamma_corr = |x: f64| (x.clamp(0., 1.).sqrt() * 255.) as u8;
+
         for (i, pixel) in float_buffer.iter().enumerate() {
-            u8_buffer[i * 3] = (pixel.x * 255.0) as u8;
-            u8_buffer[i * 3 + 1] = (pixel.y * 255.0) as u8;
-            u8_buffer[i * 3 + 2] = (pixel.z * 255.0) as u8;
+            u8_buffer[i * 3] = apply_gamma_corr(pixel.x);
+            u8_buffer[i * 3 + 1] = apply_gamma_corr(pixel.y);
+            u8_buffer[i * 3 + 2] = apply_gamma_corr(pixel.z);
         }
 
         return u8_buffer;
@@ -135,7 +137,7 @@ impl Engine {
 
                                 let mut samples = vec![];
 
-                                for _ in 0..16 {
+                                for _ in 0..1 {
                                     let ray = engine.camera.create_ray(x, y);
                                     samples.push(engine.trace_ray(&ray, REFLECTION_DEPTH));
                                 }
@@ -251,8 +253,9 @@ impl Engine {
         };
 
         let world_sample = transform_matrix * sample;
+        let cos_theta2 = sample.y;
 
-        return (world_sample, sample.y);
+        return (world_sample, cos_theta2);
     }
 
     pub fn trace_ray(&self, ray: &Ray, depth: u32) -> Vector3<f64> {
@@ -273,28 +276,25 @@ impl Engine {
 
                 let going_into = normal.dot(&ray.direction) < 0.;
                 let relative_normal = if going_into { normal } else { -normal };
+                let cos_theta = -relative_normal.dot(&ray.direction);
 
-                let direct_lightning = {
-                    // TODO: Add light source
-                    let emittance = color * surface.emittance.map(|e| e.ke).unwrap_or(0.);
-                    emittance
-                };
+                let emittance = color * surface.emittance.map(|e| e.ke).unwrap_or(0.);
 
                 let indirect_lightning = {
-                    let (wi, cos_theta) = self.sample_hemisphere(relative_normal);
-
+                    let (wi, cos_theta2) = self.sample_hemisphere(relative_normal);
                     let sample_ray = Ray::new(intersection_point + relative_normal * EPSILON, wi);
-                    let sample_color = cos_theta * self.trace_ray(&sample_ray, depth - 1);
+                    let sample_color = cos_theta2 * self.trace_ray(&sample_ray, depth - 1);
 
                     surface.diffuse.kd * color.component_mul(&sample_color)
                 };
 
                 let reflection = if surface.reflection.kr > 0. {
-                    let reflected_dir =
-                        (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
-
-                    let reflected_ray =
-                        Ray::new(intersection_point + (normal * EPSILON), reflected_dir);
+                    let reflected_ray = Ray::new(
+                        intersection_point + (relative_normal * EPSILON),
+                        (ray.direction
+                            - (2.0 * ray.direction.dot(&relative_normal) * relative_normal))
+                            .normalize(),
+                    );
 
                     surface.reflection.kr
                         * color.component_mul(&self.trace_ray(&reflected_ray, depth - 1))
@@ -311,34 +311,18 @@ impl Engine {
                         n_glass / n_air
                     };
 
-                    let cos_theta = -relative_normal.dot(&ray.direction);
                     let sin_theta_sqr = 1. - cos_theta.powi(2);
-
                     let sin_theta2_sqr = n_ratio.powi(2) * sin_theta_sqr;
                     let cos_theta2_sqr = 1. - sin_theta2_sqr;
 
-                    if sin_theta2_sqr > 1. {
-                        // return total internal reflection
-                        let reflected_dir = (ray.direction
-                            - (2.0 * ray.direction.dot(&relative_normal) * relative_normal))
-                            .normalize();
-
-                        let reflected_ray = Ray::new(
-                            intersection_point + (relative_normal * EPSILON),
-                            reflected_dir,
-                        );
-
-                        return surface.reflection.kr * color.component_mul(&self.trace_ray(&reflected_ray, depth - 1));
+                    if cos_theta2_sqr < 0. {
+                        return reflection; // total reflection
                     }
 
-                    // refracted ray direction
-                    let c1 = cos_theta;
-                    let c2 = cos_theta2_sqr.sqrt();
-                    let refracted_dir = ray.direction * n_ratio + relative_normal * (n_ratio * c1 - c2);
-
                     let refracted_ray = Ray::new(
-                        intersection_point + (relative_normal * EPSILON),
-                        refracted_dir,
+                        intersection_point - (relative_normal * EPSILON),
+                        ray.direction * n_ratio
+                            + relative_normal * (n_ratio * cos_theta - cos_theta2_sqr.sqrt()),
                     );
 
                     surface.transmission.kt * self.trace_ray(&refracted_ray, depth - 1)
@@ -346,7 +330,7 @@ impl Engine {
                     Vector3::zeros()
                 };
 
-                return direct_lightning + indirect_lightning + reflection + refraction;
+                return emittance + indirect_lightning + reflection + refraction;
             }
         }
     }

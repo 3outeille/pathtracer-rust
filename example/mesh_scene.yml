@@ -21,6 +21,28 @@ meshes:
           ns: 15.0
         reflection:
           kr: 0.3
+        transmission:
+          kt: 0.0
+
+spheres:
+  - center: [0, 4, -3]
+    radius: 1
+    textmat:
+      color: [1.0, 1.0, 1.0] # white
+      surface:
+        emittance:
+          ke: 10
+        ambient:
+          ka: 1.0
+        diffuse:
+          kd: 0.0
+        specular:
+          ks: 0.0
+          ns: 1.0
+        reflection:
+          kr: 0.0
+        transmission:
+          kt: 0
 
 lights:
   - position: [0.0, 2.0, -3.0]

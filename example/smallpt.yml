@@ -59,23 +59,6 @@ spheres:
           kr: 0.0
         transmission:
           kt: 0.0
-  # Front
-  # - center: [50, 40.8, -99830.0]
-  #   radius: 100000
-  #   textmat:
-  #     color: [0.0, 0.0, 0.0]
-  #     surface:
-  #       ambient:
-  #         ka: 0.0
-  #       diffuse:
-  #         kd: 1
-  #       specular:
-  #         ks: 0.0
-  #         ns: 0.0
-  #       reflection:
-  #         kr: 0.0
-  #       transmission:
-  #         kt: 0.0
   # Bottom
   - center: [-50, 100000, 81.6]
     radius: 100000
