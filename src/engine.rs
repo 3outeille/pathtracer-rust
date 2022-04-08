@@ -101,72 +101,74 @@ impl Engine {
     }
 
     #[allow(dead_code)]
-    pub fn render(self, cpu: usize) -> Vec<u8> {
-        Engine::buffer_float_to_u8(&self.stream_render(cpu, 1).recv().unwrap())
+    pub fn render(self, cpu: usize, samples: u32) -> Vec<u8> {
+        Engine::buffer_float_to_u8(&self.stream_render(cpu, samples).recv().unwrap())
     }
 
-    pub fn stream_render(self, cpu: usize, num_samples: u32) -> Receiver<Vec<Vector3<f64>>> {
+    pub fn stream_render(
+        self,
+        cpu: usize,
+        sample_per_iteration: u32,
+    ) -> Receiver<Vec<Vector3<f64>>> {
         assert!((self.camera.canvas_width * self.camera.canvas_height) as usize % cpu == 0);
 
         let engine = Arc::new(self);
 
         let (sender, receiver) = mpsc::channel();
 
-        thread::spawn(move || {
-            for _ in 0..num_samples {
-                let mut handles = vec![];
+        thread::spawn(move || loop {
+            let mut handles = vec![];
 
-                for w in 0..cpu {
-                    let engine = engine.clone();
+            for w in 0..cpu {
+                let engine = engine.clone();
 
-                    let t = thread::spawn(move || {
-                        let mut thread_res = vec![
-                            Vector3::zeros();
-                            (engine.camera.canvas_width * engine.camera.canvas_height)
-                                as usize
-                                / cpu
-                        ];
+                let t = thread::spawn(move || {
+                    let mut thread_res = vec![
+                        Vector3::zeros();
+                        (engine.camera.canvas_width * engine.camera.canvas_height)
+                            as usize
+                            / cpu
+                    ];
 
-                        for y in 0..engine.canvas_height {
-                            for x in 0..engine.canvas_width {
-                                let offset = y * engine.canvas_width + x;
+                    for y in 0..engine.canvas_height {
+                        for x in 0..engine.canvas_width {
+                            let offset = y * engine.canvas_width + x;
 
-                                if offset % cpu != w {
-                                    continue;
-                                }
-
-                                let mut samples = vec![];
-
-                                for _ in 0..1 {
-                                    let ray = engine.camera.create_ray(x, y);
-                                    samples.push(engine.trace_ray(&ray, REFLECTION_DEPTH));
-                                }
-
-                                let pixel = samples.iter().fold(Vector3::zeros(), |a, b| a + b)
-                                    / samples.len() as f64;
-
-                                thread_res[offset / cpu] = pixel;
+                            if offset % cpu != w {
+                                continue;
                             }
+
+                            let mut samples = vec![];
+
+                            for _ in 0..sample_per_iteration {
+                                let ray = engine.camera.create_ray(x, y);
+                                samples.push(engine.trace_ray(&ray, REFLECTION_DEPTH));
+                            }
+
+                            let pixel = samples.iter().fold(Vector3::zeros(), |a, b| a + b)
+                                / samples.len() as f64;
+
+                            thread_res[offset / cpu] = pixel;
                         }
-
-                        thread_res
-                    });
-
-                    handles.push(t);
-                }
-
-                let mut pixels = vec![Vector3::zeros(); engine.canvas_width * engine.canvas_height];
-
-                for (i, handle) in handles.into_iter().enumerate() {
-                    let thread_res = handle.join().unwrap();
-
-                    for (j, pixel) in thread_res.into_iter().enumerate() {
-                        pixels[j * cpu as usize + i] = pixel;
                     }
-                }
 
-                sender.send(pixels).unwrap();
+                    thread_res
+                });
+
+                handles.push(t);
             }
+
+            let mut pixels = vec![Vector3::zeros(); engine.canvas_width * engine.canvas_height];
+
+            for (i, handle) in handles.into_iter().enumerate() {
+                let thread_res = handle.join().unwrap();
+
+                for (j, pixel) in thread_res.into_iter().enumerate() {
+                    pixels[j * cpu as usize + i] = pixel;
+                }
+            }
+
+            sender.send(pixels).unwrap();
         });
 
         return receiver;
@@ -296,7 +298,8 @@ impl Engine {
                             .normalize(),
                     );
 
-                    surface.reflection.kr * color.component_mul(&self.trace_ray(&reflected_ray, depth - 1))
+                    surface.reflection.kr
+                        * color.component_mul(&self.trace_ray(&reflected_ray, depth - 1))
                 } else {
                     Vector3::zeros()
                 };
@@ -321,20 +324,26 @@ impl Engine {
                         ray.direction * n_ratio
                             + relative_normal * (n_ratio * cos_theta - cos_theta2_sqr.sqrt()),
                     );
-                
+
                     // Schlick's Fresnel approximation
-                    let fresnel = {                        
+                    let fresnel = {
                         let r0 = ((n_glass - n_air) / (n_glass + n_air)).powi(2);
                         r0 + (1. - r0) * (1. - cos_theta2_sqr.sqrt()).powi(5)
                     };
 
-                    (surface.transmission.kt * self.trace_ray(&refracted_ray, depth - 1), fresnel)
+                    (
+                        surface.transmission.kt * self.trace_ray(&refracted_ray, depth - 1),
+                        fresnel,
+                    )
                 } else {
                     (Vector3::zeros(), 0.)
                 };
 
                 if fresnel > 0.1 {
-                    return emittance + indirect_lightning + fresnel * reflection + (1. - fresnel) * refraction;
+                    return emittance
+                        + indirect_lightning
+                        + fresnel * reflection
+                        + (1. - fresnel) * refraction;
                 } else {
                     return emittance + indirect_lightning + reflection + refraction;
                 }
