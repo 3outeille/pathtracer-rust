@@ -343,75 +343,111 @@ impl Engine {
     }
 
     // #[allow(dead_code)]
-    // pub fn color_ray(
-    //     &self,
-    //     cast_result: Option<(Vector3<f64>, &Box<dyn ObjectsTrait>)>,
-    //     ray: &Ray,
-    //     depth: u32,
-    // ) -> Vector3<f64> {
-    //     if cast_result.is_none() || depth == 0 {
-    //         return Vector3::zeros();
-    //     }
+    pub fn cast_ray(
+        &self,
+        ray: &Ray,
+        depth: u32,
+        near_clipping_range: f64,
+        far_clipping_range: f64,
+    ) -> Vector3<f64> {
 
-    //     let (intersection_point, obj) = cast_result.unwrap();
+        match self.get_closest_hit(
+            &ray,
+            near_clipping_range,
+            far_clipping_range,
+        ) {
+            None => Vector3::<f64>::zeros(),
+            Some((intersection_point, obj)) => {
+                if depth == 0 {
+                    return Vector3::zeros();
+                }
+         
+                let TextureMaterial { color, surface } = obj.get_texture();
+                let normal = obj.get_normal(&intersection_point);
+                let reflected_dir =
+                    (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
 
-    //     let TextureMaterial { color, surface } = obj.get_texture();
-    //     let normal = obj.get_normal(&intersection_point);
-    //     let reflected_dir =
-    //         (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
+                // Phong Model
+                let ambient = color * 0.2;
+                let mut diffuse = Vector3::zeros();
+                let mut specular = Vector3::zeros();
 
-    //     // Phong Model
-    //     let ambient = color * 0.2;
-    //     let mut diffuse = Vector3::zeros();
-    //     let mut specular = Vector3::zeros();
+                for light in &self.lights {
+                    let light_vec = light.position - intersection_point;
+                    let light_dir = light_vec.normalize();
+                    let light_distance = light_vec.norm();
+                    let light_value = light.intensity * light.color;
 
-    //     for light in &self.lights {
-    //         let light_vec = light.position - intersection_point;
-    //         let light_dir = light_vec.normalize();
-    //         let light_distance = light_vec.norm();
-    //         let light_value = light.intensity * light.color;
+                    let shadow_ray = Ray::new(intersection_point, light_dir + normal * EPSILON);
+                    
+                    self.cast_ray(&shadow_ray, depth - 1, EPSILON, light_distance);
 
-    //         let shadow_ray = Ray::new(intersection_point, light_dir + normal * EPSILON);
+                    diffuse += {
+                        let dot_prod = light_dir.dot(&normal).clamp(0.0, 1.0);
+                        color.component_mul(&light_value) * dot_prod
+                    };
 
-    //         if self
-    //             .cast_ray(&shadow_ray, EPSILON, light_distance)
-    //             .is_some()
-    //         {
-    //             continue;
-    //         }
+                    specular += {
+                        let dot_prod = light_dir
+                            .dot(&reflected_dir)
+                            .clamp(0.0, 1.0)
+                            .powf(surface.specular.ns);
+                        light_value * dot_prod
+                    };
+                }
 
-    //         diffuse += {
-    //             let dot_prod = light_dir.dot(&normal).clamp(0.0, 1.0);
-    //             color.component_mul(&light_value) * dot_prod
-    //         };
+                let reflection = {
+                    let reflected_ray = Ray::new(intersection_point + (normal * EPSILON), reflected_dir);
+                    self.cast_ray(&reflected_ray, depth - 1, self.camera.near_clipping_range, self.camera.far_clipping_range)
+                };
 
-    //         specular += {
-    //             let dot_prod = light_dir
-    //                 .dot(&reflected_dir)
-    //                 .clamp(0.0, 1.0)
-    //                 .powf(surface.specular.ns);
-    //             light_value * dot_prod
-    //         };
-    //     }
+                let (refraction, fresnel) = {
+                    let (n_air, n_glass): (f64, f64) = (1., 1.5);
+                    
+                    let going_into = normal.dot(&ray.direction) < 0.;
+                    let relative_normal = if going_into { normal } else { -normal };
+                    let cos_theta = -relative_normal.dot(&ray.direction);
 
-    //     let reflection = {
-    //         // When casting rays using previous intersection point, ray may hit under the surface
-    //         // due to numerical precision of the intersection point calculation (discriminant).
-    //         // The more rays are casted using previous intersection point, the more the error accumulate.
-    //         let reflected_ray = Ray::new(intersection_point + (normal * EPSILON), reflected_dir);
+                    let n_ratio: f64 = if going_into {
+                        n_air / n_glass
+                    } else {
+                        n_glass / n_air
+                    };
 
-    //         let cast_result = self.cast_ray(
-    //             &reflected_ray,
-    //             self.camera.near_clipping_range,
-    //             self.camera.far_clipping_range,
-    //         );
+                    let sin_theta_sqr = 1. - cos_theta.powi(2);
+                    let sin_theta2_sqr = n_ratio.powi(2) * sin_theta_sqr;
+                    let cos_theta2_sqr = 1. - sin_theta2_sqr;
 
-    //         self.color_ray(cast_result, &reflected_ray, depth - 1)
-    //     };
+                    let refracted_ray = Ray::new(
+                        intersection_point - (relative_normal * EPSILON),
+                        ray.direction * n_ratio
+                            + relative_normal * (n_ratio * cos_theta - cos_theta2_sqr.sqrt()),
+                    );
+                    
+                    // Schlick's Fresnel approximation
+                    let fresnel = {                        
+                        let r0 = ((n_glass - n_air) / (n_glass + n_air)).powi(2);
+                        r0 + (1. - r0) * (1. - cos_theta2_sqr.sqrt()).powi(5)
+                    };
 
-    //     return (surface.ambient.ka * ambient)
-    //         + (surface.diffuse.kd * diffuse)
-    //         + (surface.specular.ks * specular)
-    //         + (surface.reflection.kr * reflection);
-    // }
+                    (self.cast_ray(&refracted_ray, depth - 1, self.camera.near_clipping_range, self.camera.far_clipping_range), fresnel)                    
+                };
+
+                if fresnel > 0.1 {
+                    return (surface.ambient.ka * ambient)
+                    + (surface.diffuse.kd * diffuse)
+                    + (surface.specular.ks * specular)
+                    + (fresnel * surface.reflection.kr * reflection)
+                    + ((1. - fresnel) * surface.transmission.kt * refraction);
+                } else {
+                    return (surface.ambient.ka * ambient)
+                    + (surface.diffuse.kd * diffuse)
+                    + (surface.specular.ks * specular)
+                    + (surface.reflection.kr * reflection)
+                    + (surface.transmission.kt * refraction);
+                }
+
+            }
+        }
+    }
 }
