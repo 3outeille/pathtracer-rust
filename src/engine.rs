@@ -14,7 +14,7 @@ use crate::texture_material::TextureMaterial;
 use crate::{camera::Camera, light::PointLight, objects::ObjectsTrait, Ray};
 
 const EPSILON: f64 = 1e-4;
-const REFLECTION_DEPTH: u32 = 4;
+const REFLECTION_DEPTH: u32 = 6;
 
 pub struct Engine {
     pub camera: Camera,
@@ -296,21 +296,18 @@ impl Engine {
                             .normalize(),
                     );
 
-                    surface.reflection.kr
-                        * color.component_mul(&self.trace_ray(&reflected_ray, depth - 1))
+                    surface.reflection.kr * color.component_mul(&self.trace_ray(&reflected_ray, depth - 1))
                 } else {
                     Vector3::zeros()
                 };
 
-                let refraction = if surface.transmission.kt > 0. {
-                    let (n_air, n_glass) = (1., 1.5);
-
+                let (refraction, fresnel) = if surface.transmission.kt > 0. {
+                    let (n_air, n_glass): (f64, f64) = (1., 1.5);
                     let n_ratio: f64 = if going_into {
                         n_air / n_glass
                     } else {
                         n_glass / n_air
                     };
-
                     let sin_theta_sqr = 1. - cos_theta.powi(2);
                     let sin_theta2_sqr = n_ratio.powi(2) * sin_theta_sqr;
                     let cos_theta2_sqr = 1. - sin_theta2_sqr;
@@ -324,13 +321,23 @@ impl Engine {
                         ray.direction * n_ratio
                             + relative_normal * (n_ratio * cos_theta - cos_theta2_sqr.sqrt()),
                     );
+                
+                    // Schlick's Fresnel approximation
+                    let fresnel = {                        
+                        let r0 = ((n_glass - n_air) / (n_glass + n_air)).powi(2);
+                        r0 + (1. - r0) * (1. - cos_theta2_sqr.sqrt()).powi(5)
+                    };
 
-                    surface.transmission.kt * self.trace_ray(&refracted_ray, depth - 1)
+                    (surface.transmission.kt * self.trace_ray(&refracted_ray, depth - 1), fresnel)
                 } else {
-                    Vector3::zeros()
+                    (Vector3::zeros(), 0.)
                 };
 
-                return emittance + indirect_lightning + reflection + refraction;
+                if fresnel > 0.1 {
+                    return emittance + indirect_lightning + fresnel * reflection + (1. - fresnel) * refraction;
+                } else {
+                    return emittance + indirect_lightning + reflection + refraction;
+                }
             }
         }
     }
