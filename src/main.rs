@@ -1,9 +1,10 @@
+use clap::Parser;
 use engine::Engine;
 use serde_yaml;
 use show_image::event::VirtualKeyCode;
 use show_image::{create_window, event, ImageInfo, ImageView};
 use std::error::Error;
-use std::{env, fs::File};
+use std::fs::File;
 
 mod camera;
 mod engine;
@@ -16,28 +17,39 @@ mod texture_material;
 
 use {crate::ray::*, crate::scene::*};
 
+#[derive(clap::ArgEnum, Copy, Clone, Debug, PartialEq, Eq)]
+pub enum RenderMode {
+    Raytracer,
+    Pathtracer,
+}
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    #[clap(arg_enum, short, long, default_value_t = RenderMode::Pathtracer)]
+    render_mode: RenderMode,
+    path: String,
+    #[clap(short, long, default_value_t = 8)]
+    cpu: usize,
+    #[clap(short, long, default_value_t = 4)]
+    step: u32,
+}
+
 #[show_image::main]
 fn main() -> Result<(), Box<dyn Error>> {
-    let args: Vec<String> = env::args().collect();
-    assert!(args.len() >= 3);
+    let args = Args::parse();
 
-    let file_arg = args[1].clone();
-    let cpu = args[2].parse().unwrap();
-    let step_per_iteration = if args.len() > 3 {
-        args[3].parse().unwrap()
-    } else {
-        1
-    };
-
-    let file = File::open(&file_arg)?;
+    let file = File::open(&args.path)?;
     let scene: Scene = serde_yaml::from_reader(file)?;
 
     let engine = Engine::from_scene(&scene);
+
+    // Check that camera is well configured
     assert!(engine.camera.up.dot(&engine.camera.forward) == 0.);
 
     let (width, height) = (engine.canvas_width, engine.canvas_height);
 
-    let receiver = engine.stream_render(cpu, step_per_iteration);
+    let receiver = engine.stream_render(args.render_mode, args.cpu, args.step);
     let mut merged_buffer = receiver.recv().unwrap();
     let mut render_count = 1.;
 

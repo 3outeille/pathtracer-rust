@@ -9,6 +9,7 @@ use image::ColorType;
 use nalgebra::{Rotation3, Vector3};
 use rand::Rng;
 
+use crate::RenderMode;
 use crate::scene::Scene;
 use crate::texture_material::TextureMaterial;
 use crate::{camera::Camera, light::PointLight, objects::ObjectsTrait, Ray};
@@ -18,7 +19,6 @@ const REFLECTION_DEPTH: u32 = 6;
 
 pub struct Engine {
     pub camera: Camera,
-    // pub blobs: Vec<Blob>,
     pub objects: Vec<Box<dyn ObjectsTrait>>,
     pub lights: Vec<PointLight>,
     pub canvas_width: usize,
@@ -29,7 +29,6 @@ impl Engine {
     pub fn new(camera: Camera, canvas_width: usize, canvas_height: usize) -> Self {
         Self {
             camera,
-            // blobs: Vec::new(),
             objects: Vec::new(),
             lights: Vec::new(),
             canvas_width,
@@ -101,12 +100,18 @@ impl Engine {
     }
 
     #[allow(dead_code)]
-    pub fn render(self, cpu: usize, samples: u32) -> Vec<u8> {
-        Engine::buffer_float_to_u8(&self.stream_render(cpu, samples).recv().unwrap())
+    pub fn render(self, render_mode: RenderMode, cpu: usize, samples: u32) -> Vec<u8> {
+        Engine::buffer_float_to_u8(
+            &self
+                .stream_render(render_mode, cpu, samples)
+                .recv()
+                .unwrap(),
+        )
     }
 
     pub fn stream_render(
         self,
+        render_mode: RenderMode,
         cpu: usize,
         sample_per_iteration: u32,
     ) -> Receiver<Vec<Vector3<f64>>> {
@@ -135,6 +140,18 @@ impl Engine {
                             let offset = y * engine.canvas_width + x;
 
                             if offset % cpu != w {
+                                continue;
+                            }
+
+                            if render_mode == RenderMode::Raytracer {
+                                let ray = engine.camera.create_ray(x, y);
+
+                                thread_res[offset / cpu] = engine.cast_ray(
+                                    &ray,
+                                    REFLECTION_DEPTH,
+                                    engine.camera.near_clipping_range,
+                                    engine.camera.far_clipping_range,
+                                );
                                 continue;
                             }
 
@@ -185,15 +202,6 @@ impl Engine {
         encoder.encode(pixels, width as u32, height as u32, ColorType::RGB(8))?;
         return Ok(());
     }
-
-    // pub fn render_blobs(&self, scene: &Scene) -> () {
-    //     for blob in scene.blobs {
-    //         let triangles =  blob.marching_cube();
-    //         for triangle in triangles {
-    //             scene.add_object(triangle);
-    //         }
-    //     }
-    // }
 
     pub fn get_closest_hit(
         &self,
@@ -260,7 +268,43 @@ impl Engine {
         return (world_sample, cos_theta2);
     }
 
+    pub fn compute_refraction(
+        &self,
+        going_into: bool,
+        cos_theta: f64,
+        intersection_point: Vector3<f64>,
+        relative_normal: Vector3<f64>,
+        ray: &Ray,
+    ) -> Option<(Ray, f64)> {
+        let (n_air, n_glass): (f64, f64) = (1., 1.5);
+        let n_ratio: f64 = if going_into {
+            n_air / n_glass
+        } else {
+            n_glass / n_air
+        };
+        let sin_theta_sqr = 1. - cos_theta.powi(2);
+        let sin_theta2_sqr = n_ratio.powi(2) * sin_theta_sqr;
+        let cos_theta2_sqr = 1. - sin_theta2_sqr;
+        if cos_theta2_sqr < 0. {
+            return None; // total reflection
+        }
+        let refracted_ray = Ray::new(
+            intersection_point - (relative_normal * EPSILON),
+            ray.direction * n_ratio
+                + relative_normal * (n_ratio * cos_theta - cos_theta2_sqr.sqrt()),
+        );
+        let fresnel = {
+            let r0 = ((n_glass - n_air) / (n_glass + n_air)).powi(2);
+            r0 + (1. - r0) * (1. - cos_theta2_sqr.sqrt()).powi(5)
+        };
+        Some((refracted_ray, fresnel))
+    }
+
     pub fn trace_ray(&self, ray: &Ray, depth: u32) -> Vector3<f64> {
+        if depth == 0 {
+            return Vector3::zeros();
+        }
+
         match self.get_closest_hit(
             &ray,
             self.camera.near_clipping_range,
@@ -268,10 +312,6 @@ impl Engine {
         ) {
             None => Vector3::<f64>::zeros(),
             Some((intersection_point, obj)) => {
-                if depth == 0 {
-                    return Vector3::zeros();
-                }
-
                 let TextureMaterial { color, surface } = obj.get_texture();
                 // let ambiant = color * 0.2;
                 let normal = obj.get_normal(&intersection_point);
@@ -305,36 +345,19 @@ impl Engine {
                 };
 
                 let (refraction, fresnel) = if surface.transmission.kt > 0. {
-                    let (n_air, n_glass): (f64, f64) = (1., 1.5);
-                    let n_ratio: f64 = if going_into {
-                        n_air / n_glass
-                    } else {
-                        n_glass / n_air
-                    };
-                    let sin_theta_sqr = 1. - cos_theta.powi(2);
-                    let sin_theta2_sqr = n_ratio.powi(2) * sin_theta_sqr;
-                    let cos_theta2_sqr = 1. - sin_theta2_sqr;
-
-                    if cos_theta2_sqr < 0. {
-                        return reflection; // total reflection
+                    match self.compute_refraction(
+                        going_into,
+                        cos_theta,
+                        intersection_point,
+                        relative_normal,
+                        ray,
+                    ) {
+                        Some((refracted_ray, fresnel)) => (
+                            surface.transmission.kt * self.trace_ray(&refracted_ray, depth - 1),
+                            fresnel,
+                        ),
+                        None => return reflection,
                     }
-
-                    let refracted_ray = Ray::new(
-                        intersection_point - (relative_normal * EPSILON),
-                        ray.direction * n_ratio
-                            + relative_normal * (n_ratio * cos_theta - cos_theta2_sqr.sqrt()),
-                    );
-
-                    // Schlick's Fresnel approximation
-                    let fresnel = {
-                        let r0 = ((n_glass - n_air) / (n_glass + n_air)).powi(2);
-                        r0 + (1. - r0) * (1. - cos_theta2_sqr.sqrt()).powi(5)
-                    };
-
-                    (
-                        surface.transmission.kt * self.trace_ray(&refracted_ray, depth - 1),
-                        fresnel,
-                    )
                 } else {
                     (Vector3::zeros(), 0.)
                 };
@@ -351,7 +374,6 @@ impl Engine {
         }
     }
 
-    // #[allow(dead_code)]
     pub fn cast_ray(
         &self,
         ray: &Ray,
@@ -359,22 +381,21 @@ impl Engine {
         near_clipping_range: f64,
         far_clipping_range: f64,
     ) -> Vector3<f64> {
+        if depth == 0 {
+            return Vector3::zeros();
+        }
 
-        match self.get_closest_hit(
-            &ray,
-            near_clipping_range,
-            far_clipping_range,
-        ) {
+        match self.get_closest_hit(&ray, near_clipping_range, far_clipping_range) {
             None => Vector3::<f64>::zeros(),
             Some((intersection_point, obj)) => {
-                if depth == 0 {
-                    return Vector3::zeros();
-                }
-         
                 let TextureMaterial { color, surface } = obj.get_texture();
                 let normal = obj.get_normal(&intersection_point);
                 let reflected_dir =
                     (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
+
+                let going_into = normal.dot(&ray.direction) < 0.;
+                let relative_normal = if going_into { normal } else { -normal };
+                let cos_theta = -relative_normal.dot(&ray.direction);
 
                 // Phong Model
                 let ambient = color * 0.2;
@@ -387,12 +408,13 @@ impl Engine {
                     let light_distance = light_vec.norm();
                     let light_value = light.intensity * light.color;
 
-                    let shadow_ray = Ray::new(intersection_point, light_dir + normal * EPSILON);
-                    
+                    let shadow_ray =
+                        Ray::new(intersection_point, light_dir + relative_normal * EPSILON);
+
                     self.cast_ray(&shadow_ray, depth - 1, EPSILON, light_distance);
 
                     diffuse += {
-                        let dot_prod = light_dir.dot(&normal).clamp(0.0, 1.0);
+                        let dot_prod = light_dir.dot(&relative_normal).clamp(0.0, 1.0);
                         color.component_mul(&light_value) * dot_prod
                     };
 
@@ -406,56 +428,54 @@ impl Engine {
                 }
 
                 let reflection = {
-                    let reflected_ray = Ray::new(intersection_point + (normal * EPSILON), reflected_dir);
-                    self.cast_ray(&reflected_ray, depth - 1, self.camera.near_clipping_range, self.camera.far_clipping_range)
+                    let reflected_ray = Ray::new(
+                        intersection_point + (relative_normal * EPSILON),
+                        reflected_dir,
+                    );
+                    self.cast_ray(
+                        &reflected_ray,
+                        depth - 1,
+                        self.camera.near_clipping_range,
+                        self.camera.far_clipping_range,
+                    )
                 };
 
-                let (refraction, fresnel) = {
-                    let (n_air, n_glass): (f64, f64) = (1., 1.5);
-                    
-                    let going_into = normal.dot(&ray.direction) < 0.;
-                    let relative_normal = if going_into { normal } else { -normal };
-                    let cos_theta = -relative_normal.dot(&ray.direction);
-
-                    let n_ratio: f64 = if going_into {
-                        n_air / n_glass
-                    } else {
-                        n_glass / n_air
-                    };
-
-                    let sin_theta_sqr = 1. - cos_theta.powi(2);
-                    let sin_theta2_sqr = n_ratio.powi(2) * sin_theta_sqr;
-                    let cos_theta2_sqr = 1. - sin_theta2_sqr;
-
-                    let refracted_ray = Ray::new(
-                        intersection_point - (relative_normal * EPSILON),
-                        ray.direction * n_ratio
-                            + relative_normal * (n_ratio * cos_theta - cos_theta2_sqr.sqrt()),
-                    );
-                    
-                    // Schlick's Fresnel approximation
-                    let fresnel = {                        
-                        let r0 = ((n_glass - n_air) / (n_glass + n_air)).powi(2);
-                        r0 + (1. - r0) * (1. - cos_theta2_sqr.sqrt()).powi(5)
-                    };
-
-                    (self.cast_ray(&refracted_ray, depth - 1, self.camera.near_clipping_range, self.camera.far_clipping_range), fresnel)                    
+                let (refraction, fresnel) = if surface.transmission.kt > 0. {
+                    match self.compute_refraction(
+                        going_into,
+                        cos_theta,
+                        intersection_point,
+                        relative_normal,
+                        ray,
+                    ) {
+                        Some((refracted_ray, fresnel)) => (
+                            self.cast_ray(
+                                &refracted_ray,
+                                depth - 1,
+                                self.camera.near_clipping_range,
+                                self.camera.far_clipping_range,
+                            ),
+                            fresnel,
+                        ),
+                        None => return reflection,
+                    }
+                } else {
+                    (Vector3::zeros(), 0.)
                 };
 
                 if fresnel > 0.1 {
                     return (surface.ambient.ka * ambient)
-                    + (surface.diffuse.kd * diffuse)
-                    + (surface.specular.ks * specular)
-                    + (fresnel * surface.reflection.kr * reflection)
-                    + ((1. - fresnel) * surface.transmission.kt * refraction);
+                        + (surface.diffuse.kd * diffuse)
+                        + (surface.specular.ks * specular)
+                        + (fresnel * surface.reflection.kr * reflection)
+                        + ((1. - fresnel) * surface.transmission.kt * refraction);
                 } else {
                     return (surface.ambient.ka * ambient)
-                    + (surface.diffuse.kd * diffuse)
-                    + (surface.specular.ks * specular)
-                    + (surface.reflection.kr * reflection)
-                    + (surface.transmission.kt * refraction);
+                        + (surface.diffuse.kd * diffuse)
+                        + (surface.specular.ks * specular)
+                        + (surface.reflection.kr * reflection)
+                        + (surface.transmission.kt * refraction);
                 }
-
             }
         }
     }

@@ -40,46 +40,6 @@ impl Default for Surface {
     }
 }
 
-// impl Surface {
-//    /*
-//    http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
-//    https://www.cs.cornell.edu/~srm/publications/EGSR07-btdf.pdf
-//    */
-//     pub fn get_bsdf(
-//         &self,
-//         normal: Vector3<f64>,
-//         wi: Vector3<f64>,
-//         wo: Vector3<f64>,
-//     ) -> Vector3<f64> {
-//         // BSDF = BTDF + BRDF
-
-//         // BTDF (transparence)
-//         let btdf = { Vector3::zeros() };
-
-//         // BDRF = kd * diffuse + ks * specular
-//         let brdf = {
-//             // Diffuse: Lambert
-//             let diffuse = Vector3::new(1. / PI, 1. / PI, 1. / PI);
-
-//             // Specular: Cook-Torrance BRDF = DFG / (4(n \cdot wi)(n \cdot wo))
-//             let specular = Vector3::zeros();
-
-//             // D: microfacet distribution function
-//             // D = exp(((n \cdot h)^2 - 1) / (m^2 (n \cdot h)^2)) / (pi m^2 (n \cdot h)^4)
-
-//             // F: fresnel, schlick's approximation
-//             // F = F0 + (1 - F0)(1 - wi \cdot h)^5
-
-//             // G: geometry function, microfacet shadowing
-//             // G = min(1, 2(n \cdot h)(n \cdot wo)/(wo \cdot h), 2(n \cdot h)(n \cdot wi)/(wo \cdot h))
-
-//             (self.diffuse.kd * diffuse) + (self.specular.ks * specular)
-//         };
-
-//         return btdf + brdf;
-//     }
-// }
-
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Emittance {
     pub ke: f64,

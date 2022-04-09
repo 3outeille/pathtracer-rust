@@ -259,4 +259,7 @@ spheres:
         transmission:
           kt: 0
 
-lights: []
+lights:
+  - position: [0, 2.5, 0]
+    color: [1.0, 1.0, 1.0]
+    intensity: 0.9
