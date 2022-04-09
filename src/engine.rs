@@ -9,13 +9,13 @@ use image::ColorType;
 use nalgebra::{Rotation3, Vector3};
 use rand::Rng;
 
-use crate::RenderMode;
 use crate::scene::Scene;
 use crate::texture_material::TextureMaterial;
+use crate::RenderMode;
 use crate::{camera::Camera, light::PointLight, objects::ObjectsTrait, Ray};
 
 const EPSILON: f64 = 1e-4;
-const REFLECTION_DEPTH: u32 = 6;
+const REFLECTION_DEPTH: u32 = 4;
 
 pub struct Engine {
     pub camera: Camera,
@@ -72,10 +72,6 @@ impl Engine {
 
         return engine;
     }
-
-    // pub fn add_blob(&mut self, blob: Blob) -> () {
-    //     self.blobs.push(mesh);
-    // }
 
     pub fn add_object(&mut self, object: Box<dyn ObjectsTrait>) -> () {
         self.objects.push(object);
@@ -270,14 +266,14 @@ impl Engine {
 
     pub fn compute_refraction(
         &self,
-        going_into: bool,
+        light_going_into: bool,
         cos_theta: f64,
         intersection_point: Vector3<f64>,
         relative_normal: Vector3<f64>,
         ray: &Ray,
     ) -> Option<(Ray, f64)> {
         let (n_air, n_glass): (f64, f64) = (1., 1.5);
-        let n_ratio: f64 = if going_into {
+        let n_ratio: f64 = if light_going_into {
             n_air / n_glass
         } else {
             n_glass / n_air
@@ -285,18 +281,30 @@ impl Engine {
         let sin_theta_sqr = 1. - cos_theta.powi(2);
         let sin_theta2_sqr = n_ratio.powi(2) * sin_theta_sqr;
         let cos_theta2_sqr = 1. - sin_theta2_sqr;
+
         if cos_theta2_sqr < 0. {
             return None; // total reflection
         }
+        let cos_theta2 = cos_theta2_sqr.sqrt();
+
         let refracted_ray = Ray::new(
             intersection_point - (relative_normal * EPSILON),
-            ray.direction * n_ratio
-                + relative_normal * (n_ratio * cos_theta - cos_theta2_sqr.sqrt()),
+            ray.direction * n_ratio + relative_normal * (n_ratio * cos_theta - cos_theta2),
         );
+
+        // dbg!(light_going_into, cos_theta);
+
         let fresnel = {
             let r0 = ((n_glass - n_air) / (n_glass + n_air)).powi(2);
-            r0 + (1. - r0) * (1. - cos_theta2_sqr.sqrt()).powi(5)
+            let c = if light_going_into {
+                cos_theta
+            } else {
+                cos_theta2
+            };
+            r0 + (1. - r0) * (1. - c).powi(5)
         };
+        assert!(fresnel >= 0. && fresnel <= 1.);
+
         Some((refracted_ray, fresnel))
     }
 
@@ -316,8 +324,8 @@ impl Engine {
                 // let ambiant = color * 0.2;
                 let normal = obj.get_normal(&intersection_point);
 
-                let going_into = normal.dot(&ray.direction) < 0.;
-                let relative_normal = if going_into { normal } else { -normal };
+                let light_going_into = normal.dot(&ray.direction) < 0.;
+                let relative_normal = if light_going_into { normal } else { -normal };
                 let cos_theta = -relative_normal.dot(&ray.direction);
 
                 let emittance = color * surface.emittance.map(|e| e.ke).unwrap_or(0.);
@@ -338,22 +346,21 @@ impl Engine {
                             .normalize(),
                     );
 
-                    surface.reflection.kr
-                        * color.component_mul(&self.trace_ray(&reflected_ray, depth - 1))
+                    color.component_mul(&self.trace_ray(&reflected_ray, depth - 1))
                 } else {
                     Vector3::zeros()
                 };
 
                 let (refraction, fresnel) = if surface.transmission.kt > 0. {
                     match self.compute_refraction(
-                        going_into,
+                        light_going_into,
                         cos_theta,
                         intersection_point,
                         relative_normal,
                         ray,
                     ) {
                         Some((refracted_ray, fresnel)) => (
-                            surface.transmission.kt * self.trace_ray(&refracted_ray, depth - 1),
+                            surface.transmission.kt * self.trace_ray(&refracted_ray, depth),
                             fresnel,
                         ),
                         None => return reflection,
@@ -362,13 +369,13 @@ impl Engine {
                     (Vector3::zeros(), 0.)
                 };
 
-                if fresnel > 0.1 {
-                    return emittance
+                if surface.transmission.kt > 0. {
+                    emittance
                         + indirect_lightning
                         + fresnel * reflection
-                        + (1. - fresnel) * refraction;
+                        + (1. - fresnel) * refraction
                 } else {
-                    return emittance + indirect_lightning + reflection + refraction;
+                    emittance + indirect_lightning + surface.reflection.kr * reflection + refraction
                 }
             }
         }
@@ -393,8 +400,8 @@ impl Engine {
                 let reflected_dir =
                     (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
 
-                let going_into = normal.dot(&ray.direction) < 0.;
-                let relative_normal = if going_into { normal } else { -normal };
+                let light_going_into = normal.dot(&ray.direction) < 0.;
+                let relative_normal = if light_going_into { normal } else { -normal };
                 let cos_theta = -relative_normal.dot(&ray.direction);
 
                 // Phong Model
@@ -442,7 +449,7 @@ impl Engine {
 
                 let (refraction, fresnel) = if surface.transmission.kt > 0. {
                     match self.compute_refraction(
-                        going_into,
+                        light_going_into,
                         cos_theta,
                         intersection_point,
                         relative_normal,
@@ -451,7 +458,7 @@ impl Engine {
                         Some((refracted_ray, fresnel)) => (
                             self.cast_ray(
                                 &refracted_ray,
-                                depth - 1,
+                                depth,
                                 self.camera.near_clipping_range,
                                 self.camera.far_clipping_range,
                             ),
@@ -463,18 +470,18 @@ impl Engine {
                     (Vector3::zeros(), 0.)
                 };
 
-                if fresnel > 0.1 {
-                    return (surface.ambient.ka * ambient)
+                if surface.transmission.kt > 0. {
+                    (surface.ambient.ka * ambient)
                         + (surface.diffuse.kd * diffuse)
                         + (surface.specular.ks * specular)
-                        + (fresnel * surface.reflection.kr * reflection)
-                        + ((1. - fresnel) * surface.transmission.kt * refraction);
+                        + (fresnel * reflection)
+                        + ((1. - fresnel) * surface.transmission.kt * refraction)
                 } else {
-                    return (surface.ambient.ka * ambient)
+                    (surface.ambient.ka * ambient)
                         + (surface.diffuse.kd * diffuse)
                         + (surface.specular.ks * specular)
                         + (surface.reflection.kr * reflection)
-                        + (surface.transmission.kt * refraction);
+                        + (surface.transmission.kt * refraction)
                 }
             }
         }
