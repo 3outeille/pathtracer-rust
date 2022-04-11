@@ -4,8 +4,8 @@ camera:
   up: [0.0, 1.0, 0.0]
   fov_x_deg: 45.0 # degree
   near_clipping_range: 0.01
-  canvas_width: 1080
-  canvas_height: 1080
+  canvas_width: 1048
+  canvas_height: 1048
 
 triangles:
   # Ceiling bottom right
@@ -192,7 +192,7 @@ triangles:
           kt: 0
 
 spheres:
-  - center: [1.2, 0.5, 0.2]
+  - center: [1.0, 2.5, 0.2]
     radius: 0.5
     textmat:
       color: [1, 1, 1] # transparent
@@ -229,12 +229,12 @@ spheres:
 
 
 meshes:
-  - path: example/models/homer.obj
-    scale: 3
-    origin: [1.5, -0.5, 2]
+  - path: example/models/teapot.obj
+    scale: 0.5
+    origin: [0, 0, 0]
     rotation: [0, 180, 0]
     textmat:
-      color: [1, 1, 1]
+      color: [0.06, 0.93, 0.42]
       surface:
         ambient:
           ka: 0.0
