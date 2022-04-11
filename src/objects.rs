@@ -1,5 +1,7 @@
 extern crate nalgebra;
 
+use std::mem::swap;
+
 use nalgebra::Vector3;
 use serde::Deserialize;
 
@@ -7,15 +9,25 @@ use {crate::ray::Ray, crate::texture_material::TextureMaterial};
 
 const EPSILON: f64 = 1e-6;
 
+pub struct HitRecord {
+    pub t: f64,
+    pub point: Vector3<f64>,
+    pub normal: Vector3<f64>,
+}
+
+impl HitRecord {
+    pub fn new(t: f64, point: Vector3<f64>, normal: Vector3<f64>) -> Self {
+        Self { t, point, normal }
+    }
+}
+
 pub trait ObjectsTrait: Sync + Send {
     fn intersects(
         &self,
         ray: &Ray,
         near_clipping_range: f64,
         far_clipping_range: f64,
-    ) -> Option<f64>;
-
-    fn get_normal(&self, point: &Vector3<f64>) -> Vector3<f64>;
+    ) -> Option<HitRecord>;
 
     fn get_texture(&self) -> TextureMaterial;
 }
@@ -33,7 +45,7 @@ impl ObjectsTrait for Sphere {
         ray: &Ray,
         near_clipping_range: f64,
         far_clipping_range: f64,
-    ) -> Option<f64> {
+    ) -> Option<HitRecord> {
         let oc = ray.origin - self.center;
 
         let a = ray.direction.dot(&ray.direction);
@@ -53,11 +65,10 @@ impl ObjectsTrait for Sphere {
                 return None;
             }
         }
-        return Some(root);
-    }
 
-    fn get_normal(&self, point: &Vector3<f64>) -> Vector3<f64> {
-        return (point - self.center).normalize();
+        let intersection_point = ray.at(root);
+        let normal = (intersection_point - self.center).normalize();
+        return Some(HitRecord::new(root, intersection_point, normal));
     }
 
     fn get_texture(&self) -> TextureMaterial {
@@ -78,7 +89,7 @@ impl ObjectsTrait for Plane {
         ray: &Ray,
         near_clipping_range: f64,
         far_clipping_range: f64,
-    ) -> Option<f64> {
+    ) -> Option<HitRecord> {
         let denom = (-self.normal).dot(&ray.direction);
 
         if denom <= EPSILON {
@@ -91,11 +102,9 @@ impl ObjectsTrait for Plane {
             return None;
         }
 
-        return Some(t);
-    }
-
-    fn get_normal(&self, _point: &Vector3<f64>) -> Vector3<f64> {
-        return self.normal;
+        let intersection_point = ray.at(t);
+        let normal = (intersection_point - self.center).normalize();
+        return Some(HitRecord::new(t, intersection_point, normal));
     }
 
     fn get_texture(&self) -> TextureMaterial {
@@ -117,7 +126,7 @@ impl ObjectsTrait for Triangle {
         ray: &Ray,
         near_clipping_range: f64,
         far_clipping_range: f64,
-    ) -> Option<f64> {
+    ) -> Option<HitRecord> {
         // Möller-Trumbore algorithm
 
         let v0v1 = self.v1 - self.v0;
@@ -150,11 +159,85 @@ impl ObjectsTrait for Triangle {
             return None;
         }
 
-        return Some(t);
+        let intersection_point = ray.at(t);
+
+        let normal = -(self.v1 - self.v0).cross(&(self.v2 - self.v0)).normalize();
+
+        return Some(HitRecord::new(t, intersection_point, normal));
     }
 
-    fn get_normal(&self, _point: &Vector3<f64>) -> Vector3<f64> {
-        return -(self.v1 - self.v0).cross(&(self.v2 - self.v0)).normalize();
+    fn get_texture(&self) -> TextureMaterial {
+        return self.textmat;
+    }
+}
+
+pub struct Mesh {
+    pub triangles: Vec<Triangle>,
+    pub bounds: [Vector3<f64>; 2],
+    pub textmat: TextureMaterial,
+}
+
+impl ObjectsTrait for Mesh {
+    fn intersects(
+        &self,
+        ray: &Ray,
+        near_clipping_range: f64,
+        far_clipping_range: f64,
+    ) -> Option<HitRecord> {
+        let mut tmin = (self.bounds[0].x - ray.origin.x) / ray.direction.x;
+        let mut tmax = (self.bounds[1].x - ray.origin.x) / ray.direction.x;
+
+        if tmin > tmax {
+            swap(&mut tmin, &mut tmax);
+        }
+
+        let mut tymin = (self.bounds[0].y - ray.origin.y) / ray.direction.y;
+        let mut tymax = (self.bounds[1].y - ray.origin.y) / ray.direction.y;
+
+        if tymin > tymax {
+            swap(&mut tymin, &mut tymax);
+        }
+
+        if tmin > tymax || tymin > tmax {
+            return None;
+        }
+
+        if tymin > tmin {
+            tmin = tymin;
+        }
+
+        if tymax < tmax {
+            tmax = tymax;
+        }
+
+        let mut tzmin = (self.bounds[0].z - ray.origin.z) / ray.direction.z;
+        let mut tzmax = (self.bounds[1].z - ray.origin.z) / ray.direction.z;
+
+        if tzmin > tzmax {
+            swap(&mut tzmin, &mut tzmax);
+        }
+
+        if tmin > tzmax || tzmin > tmax {
+            return None;
+        }
+
+        let mut min_t = std::f64::MAX;
+        let mut min_obj = None;
+
+        for object in &self.triangles {
+            // Find the nearest root.
+            match object.intersects(&ray, near_clipping_range, far_clipping_range) {
+                Some(record) if (record.t < min_t) => {
+                    min_t = record.t;
+                    min_obj = Some(record);
+                }
+                _ => {
+                    continue;
+                }
+            };
+        }
+
+        return min_obj;
     }
 
     fn get_texture(&self) -> TextureMaterial {

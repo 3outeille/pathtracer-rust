@@ -9,6 +9,7 @@ use image::ColorType;
 use nalgebra::{Rotation3, Vector3};
 use rand::Rng;
 
+use crate::objects::HitRecord;
 use crate::scene::Scene;
 use crate::texture_material::TextureMaterial;
 use crate::RenderMode;
@@ -204,16 +205,16 @@ impl Engine {
         ray: &Ray,
         near_clipping_range: f64,
         far_clipping_range: f64,
-    ) -> Option<(Vector3<f64>, &Box<dyn ObjectsTrait>)> {
+    ) -> Option<(HitRecord, &Box<dyn ObjectsTrait>)> {
         let mut min_t = std::f64::MAX;
-        let mut min_obj: Option<&Box<dyn ObjectsTrait>> = None;
+        let mut min_record = None;
 
         for object in &self.objects {
             // Find the nearest root.
             match object.intersects(&ray, near_clipping_range, far_clipping_range) {
-                Some(t) if (t < min_t) => {
-                    min_obj = Some(&object);
-                    min_t = t;
+                Some(record) if (record.t < min_t) => {
+                    min_t = record.t;
+                    min_record = Some((record, object));
                 }
                 _ => {
                     continue;
@@ -221,11 +222,7 @@ impl Engine {
             };
         }
 
-        if let Some(obj) = min_obj {
-            Some((ray.at(min_t), obj))
-        } else {
-            None
-        }
+       return min_record;
     }
 
     fn sample_hemisphere(&self, normal: Vector3<f64>) -> (Vector3<f64>, f64) {
@@ -319,10 +316,11 @@ impl Engine {
             self.camera.far_clipping_range,
         ) {
             None => Vector3::<f64>::zeros(),
-            Some((intersection_point, obj)) => {
+            Some((record, obj)) => {
                 let TextureMaterial { color, surface } = obj.get_texture();
                 // let ambiant = color * 0.2;
-                let normal = obj.get_normal(&intersection_point);
+                let normal = record.normal;
+                let intersection_point = record.point;
 
                 let light_going_into = normal.dot(&ray.direction) < 0.;
                 let relative_normal = if light_going_into { normal } else { -normal };
@@ -394,9 +392,10 @@ impl Engine {
 
         match self.get_closest_hit(&ray, near_clipping_range, far_clipping_range) {
             None => Vector3::<f64>::zeros(),
-            Some((intersection_point, obj)) => {
+            Some((record, obj)) => {
                 let TextureMaterial { color, surface } = obj.get_texture();
-                let normal = obj.get_normal(&intersection_point);
+                let intersection_point = record.point;
+                let normal = record.normal;
                 let reflected_dir =
                     (ray.direction - (2.0 * ray.direction.dot(&normal) * normal)).normalize();
 

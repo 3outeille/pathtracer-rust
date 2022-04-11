@@ -3,7 +3,7 @@ use serde::Deserialize;
 use crate::{
     camera::Camera,
     light::PointLight,
-    mesh::Mesh,
+    mesh::MeshConfig,
     objects::{Plane, Sphere, Triangle},
 };
 
@@ -18,5 +18,5 @@ pub struct Scene {
     #[serde(default = "Vec::new")]
     pub planes: Vec<Plane>,
     #[serde(default = "Vec::new")]
-    pub meshes: Vec<Mesh>,
+    pub meshes: Vec<MeshConfig>,
 }
