@@ -4,8 +4,8 @@ camera:
   up: [0.0, 1.0, 0.0]
   fov_x_deg: 45.0 # degree
   near_clipping_range: 0.01
-  canvas_width: 1048
-  canvas_height: 1048
+  canvas_width: 1080
+  canvas_height: 1080
 
 triangles:
   # Ceiling bottom right
