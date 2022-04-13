@@ -4,8 +4,8 @@ camera:
   up: [0.0, 1.0, 0.0]
   fov_x_deg: 45.0 # degree
   near_clipping_range: 0.01
-  canvas_width: 1080
-  canvas_height: 1080
+  canvas_width: 540
+  canvas_height: 540
 
 triangles:
   # Ceiling bottom right
@@ -15,8 +15,6 @@ triangles:
     textmat:
       color: [0.85, 0.85, 0.7] # beige
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 1.5
         specular:
@@ -33,8 +31,6 @@ triangles:
     textmat:
       color: [0.85, 0.85, 0.7] # beige
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 1.5
         specular:
@@ -52,8 +48,6 @@ triangles:
       color: [1, 1, 1] # green
       # color: [0.25, 0.6, 0.0] # green
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 1.5
         specular:
@@ -71,8 +65,6 @@ triangles:
       color: [1, 1, 1] # green
       # color: [0.25, 0.6, 0.0] # green
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 1.5
         specular:
@@ -89,8 +81,6 @@ triangles:
     textmat:
       color: [0.05, 0.6, 1.0] # blue
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 1.5
         specular:
@@ -107,8 +97,6 @@ triangles:
     textmat:
       color: [0.05, 0.6, 1.0] # blue
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 1.5
         specular:
@@ -125,8 +113,6 @@ triangles:
     textmat:
       color: [0.75, 0.75, 0.75] # white
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 1.5
         specular:
@@ -143,8 +129,6 @@ triangles:
     textmat:
       color: [0.75, 0.75, 0.75] # white
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 1.5
         specular:
@@ -161,8 +145,6 @@ triangles:
     textmat:
       color: [0.75, 0.15, 0.15] # red
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 1.5
         specular:
@@ -179,8 +161,6 @@ triangles:
     textmat:
       color: [0.75, 0.15, 0.15] # red
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 1.5
         specular:
@@ -197,8 +177,6 @@ spheres:
     textmat:
       color: [1, 1, 1] # transparent
       surface:
-        ambient:
-          ka: 0
         diffuse:
           kd: 0
         specular:
@@ -215,8 +193,6 @@ spheres:
       surface:
         emittance:
           ke: 10
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 0.0
         specular:
@@ -227,7 +203,6 @@ spheres:
         transmission:
           kt: 0
 
-
 meshes:
   - path: example/models/teapot.obj
     scale: 0.5
@@ -236,8 +211,6 @@ meshes:
     textmat:
       color: [0.06, 0.93, 0.42]
       surface:
-        ambient:
-          ka: 0.0
         diffuse:
           kd: 1.5
         specular:

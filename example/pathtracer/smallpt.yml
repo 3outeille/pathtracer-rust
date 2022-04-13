@@ -14,8 +14,6 @@ spheres:
     textmat:
       color: [0.75, 0.25, 0.25]
       surface:
-        ambient:
-          ka: 0.0
         diffuse:
           kd: 1
         specular:
@@ -31,8 +29,6 @@ spheres:
     textmat:
       color: [0.25, 0.25, 0.75]
       surface:
-        ambient:
-          ka: 0.0
         diffuse:
           kd: 1
         specular:
@@ -48,8 +44,6 @@ spheres:
     textmat:
       color: [0.75, 0.75, 0.75]
       surface:
-        ambient:
-          ka: 0.0
         diffuse:
           kd: 1
         specular:
@@ -65,8 +59,6 @@ spheres:
     textmat:
       color: [0.75, 0.75, 0.75]
       surface:
-        ambient:
-          ka: 0.0
         diffuse:
           kd: 1
         specular:
@@ -82,8 +74,6 @@ spheres:
     textmat:
       color: [0.75, 0.75, 0.75]
       surface:
-        ambient:
-          ka: 0.0
         diffuse:
           kd: 1
         specular:
@@ -99,8 +89,6 @@ spheres:
     textmat:
       color: [1, 1, 1] # white
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 0
         specular:
@@ -118,8 +106,6 @@ spheres:
     textmat:
       color: [1, 1, 1] # white
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 0
         specular:
@@ -137,8 +123,6 @@ spheres:
     textmat:
       color: [1, 1, 1] # white
       surface:
-        ambient:
-          ka: 1.0
         diffuse:
           kd: 0
         specular:

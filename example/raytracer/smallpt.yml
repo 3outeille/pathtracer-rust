@@ -1,0 +1,123 @@
+camera:
+  origin: [-50, 52, 295.6]
+  forward: [0, -0.04257336554299295,-0.9990933432599491]
+  up: [0, 0.9990933432599491, -0.04257336554299295]
+  fov_x_deg: 39.22 # degree
+  near_clipping_range: 0.01
+  canvas_width: 1024
+  canvas_height: 768
+
+spheres:
+  # Left
+  - center: [-100001, 40.8, 81.6]
+    radius: 100000
+    textmat:
+      color: [0.75, 0.25, 0.25]
+      surface:
+        diffuse:
+          kd: 1
+        specular:
+          ks: 0.0
+          ns: 0.0
+        reflection:
+          kr: 0.0
+        transmission:
+          kt: 0.0
+  # Right
+  - center: [99901, 40.8, 81.6]
+    radius: 100000
+    textmat:
+      color: [0.25, 0.25, 0.75]
+      surface:
+        diffuse:
+          kd: 1
+        specular:
+          ks: 0.0
+          ns: 0.0
+        reflection:
+          kr: 0.0
+        transmission:
+          kt: 0.0
+  # Back
+  - center: [-50, 40.8, 100000]
+    radius: 100000
+    textmat:
+      color: [0.75, 0.75, 0.75]
+      surface:
+        diffuse:
+          kd: 1
+        specular:
+          ks: 0.0
+          ns: 0.0
+        reflection:
+          kr: 0.0
+        transmission:
+          kt: 0.0
+  # Bottom
+  - center: [-50, 100000, 81.6]
+    radius: 100000
+    textmat:
+      color: [0.75, 0.75, 0.75]
+      surface:
+        diffuse:
+          kd: 1
+        specular:
+          ks: 0.0
+          ns: 0.0
+        reflection:
+          kr: 0.0
+        transmission:
+          kt: 0.0
+  # Top
+  - center: [-50, -99918.4, 81.6]
+    radius: 100000
+    textmat:
+      color: [0.75, 0.75, 0.75]
+      surface:
+        diffuse:
+          kd: 1
+        specular:
+          ks: 0.0
+          ns: 0.0
+        reflection:
+          kr: 0.0
+        transmission:
+          kt: 0.0
+  # Mir
+  - center: [-27, 16.5, 47]
+    radius: 16.5
+    textmat:
+      color: [1, 1, 1] # white
+      surface:
+        diffuse:
+          kd: 0
+        specular:
+          ks: 0.0
+          ns: 15.0
+        reflection:
+          kr: 0.999
+        emittance:
+          ke: 0
+        transmission:
+          kt: 0
+  # Glass
+  - center: [-73, 16.5, 78]
+    radius: 16.5
+    textmat:
+      color: [1, 1, 1] # white
+      surface:
+        diffuse:
+          kd: 0
+        specular:
+          ks: 0
+          ns: 0
+        reflection:
+          kr: 0.1
+        emittance:
+          ke: 0
+        transmission:
+          kt: 1
+lights:
+  - position: [-50, 75, 81.6]
+    color: [1.0, 1.0, 1.0]
+    intensity: 50

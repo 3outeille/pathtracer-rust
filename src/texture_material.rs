@@ -19,7 +19,6 @@ impl Default for TextureMaterial {
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Surface {
-    pub ambient: Ambient,
     pub emittance: Option<Emittance>,
     pub diffuse: Diffuse,
     pub specular: Specular,
@@ -30,7 +29,6 @@ pub struct Surface {
 impl Default for Surface {
     fn default() -> Self {
         Self {
-            ambient: Ambient::new(1.0),
             emittance: None,
             diffuse: Diffuse::new(1.0),
             specular: Specular::new(1.0, 15.0),
@@ -43,17 +41,6 @@ impl Default for Surface {
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Emittance {
     pub ke: f64,
-}
-
-#[derive(Copy, Clone, Debug, Deserialize)]
-pub struct Ambient {
-    pub ka: f64,
-}
-
-impl Ambient {
-    pub fn new(ka: f64) -> Self {
-        Self { ka }
-    }
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]

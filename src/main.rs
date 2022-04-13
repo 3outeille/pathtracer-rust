@@ -54,13 +54,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut render_count = 1.;
 
     // Create a window with default options and display the image.
-    let window = create_window("Pathtracer", Default::default())?;
+    let window = create_window(if args.render_mode == RenderMode::Raytracer { "Raytracer" } else { "Pathtracer" }, Default::default())?;
     let event_channel = window.event_channel()?;
 
     for single_buffer in receiver {
-        let image_buffer = Engine::buffer_float_to_u8(&merged_buffer);
+        let image_buffer = Engine::buffer_float_to_u8(&merged_buffer, args.render_mode);
         window.set_image(
-            "Pathtracer",
+            if args.render_mode == RenderMode::Raytracer { "Raytracer" } else { "Pathtracer" },
             ImageView::new(ImageInfo::rgb8(width as u32, height as u32), &image_buffer),
         )?;
 

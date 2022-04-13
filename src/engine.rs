@@ -82,10 +82,17 @@ impl Engine {
         self.lights.push(light)
     }
 
-    pub fn buffer_float_to_u8(float_buffer: &Vec<Vector3<f64>>) -> Vec<u8> {
+    pub fn buffer_float_to_u8(
+        float_buffer: &Vec<Vector3<f64>>,
+        render_mode: RenderMode,
+    ) -> Vec<u8> {
         let mut u8_buffer = vec![0; float_buffer.len() * 3];
 
-        let apply_gamma_corr = |x: f64| (x.clamp(0., 1.).sqrt() * 255.) as u8;
+        let apply_gamma_corr = if render_mode == RenderMode::Raytracer {
+            |x: f64| (x.clamp(0., 1.).powf(1. / 1.5) * 255.) as u8
+        } else {
+            |x: f64| (x.clamp(0., 1.).sqrt() * 255.) as u8
+        };
 
         for (i, pixel) in float_buffer.iter().enumerate() {
             u8_buffer[i * 3] = apply_gamma_corr(pixel.x);
@@ -103,6 +110,7 @@ impl Engine {
                 .stream_render(render_mode, cpu, samples)
                 .recv()
                 .unwrap(),
+            render_mode,
         )
     }
 
@@ -143,7 +151,7 @@ impl Engine {
                             if render_mode == RenderMode::Raytracer {
                                 let ray = engine.camera.create_ray(x, y);
 
-                                thread_res[offset / cpu] = engine.cast_ray(
+                                thread_res[offset / cpu] = engine.trace_ray(
                                     &ray,
                                     REFLECTION_DEPTH,
                                     engine.camera.near_clipping_range,
@@ -156,7 +164,7 @@ impl Engine {
 
                             for _ in 0..sample_per_iteration {
                                 let ray = engine.camera.create_ray(x, y);
-                                samples.push(engine.trace_ray(&ray, REFLECTION_DEPTH));
+                                samples.push(engine.trace_path(&ray, REFLECTION_DEPTH));
                             }
 
                             let pixel = samples.iter().fold(Vector3::zeros(), |a, b| a + b)
@@ -222,7 +230,7 @@ impl Engine {
             };
         }
 
-       return min_record;
+        return min_record;
     }
 
     fn sample_hemisphere(&self, normal: Vector3<f64>) -> (Vector3<f64>, f64) {
@@ -289,8 +297,6 @@ impl Engine {
             ray.direction * n_ratio + relative_normal * (n_ratio * cos_theta - cos_theta2),
         );
 
-        // dbg!(light_going_into, cos_theta);
-
         let fresnel = {
             let r0 = ((n_glass - n_air) / (n_glass + n_air)).powi(2);
             let c = if light_going_into {
@@ -305,7 +311,7 @@ impl Engine {
         Some((refracted_ray, fresnel))
     }
 
-    pub fn trace_ray(&self, ray: &Ray, depth: u32) -> Vector3<f64> {
+    pub fn trace_path(&self, ray: &Ray, depth: u32) -> Vector3<f64> {
         if depth == 0 {
             return Vector3::zeros();
         }
@@ -318,7 +324,6 @@ impl Engine {
             None => Vector3::<f64>::zeros(),
             Some((record, obj)) => {
                 let TextureMaterial { color, surface } = obj.get_texture();
-                // let ambiant = color * 0.2;
                 let normal = record.normal;
                 let intersection_point = record.point;
 
@@ -331,7 +336,7 @@ impl Engine {
                 let indirect_lightning = {
                     let (wi, cos_theta2) = self.sample_hemisphere(relative_normal);
                     let sample_ray = Ray::new(intersection_point + relative_normal * EPSILON, wi);
-                    let sample_color = cos_theta2 * self.trace_ray(&sample_ray, depth - 1);
+                    let sample_color = cos_theta2 * self.trace_path(&sample_ray, depth - 1);
 
                     surface.diffuse.kd * color.component_mul(&sample_color)
                 };
@@ -344,7 +349,7 @@ impl Engine {
                             .normalize(),
                     );
 
-                    color.component_mul(&self.trace_ray(&reflected_ray, depth - 1))
+                    color.component_mul(&self.trace_path(&reflected_ray, depth - 1))
                 } else {
                     Vector3::zeros()
                 };
@@ -358,7 +363,7 @@ impl Engine {
                         ray,
                     ) {
                         Some((refracted_ray, fresnel)) => (
-                            surface.transmission.kt * self.trace_ray(&refracted_ray, depth),
+                            surface.transmission.kt * self.trace_path(&refracted_ray, depth),
                             fresnel,
                         ),
                         None => return reflection,
@@ -379,7 +384,7 @@ impl Engine {
         }
     }
 
-    pub fn cast_ray(
+    pub fn trace_ray(
         &self,
         ray: &Ray,
         depth: u32,
@@ -404,9 +409,9 @@ impl Engine {
                 let cos_theta = -relative_normal.dot(&ray.direction);
 
                 // Phong Model
-                let ambient = color * 0.2;
                 let mut diffuse = Vector3::zeros();
                 let mut specular = Vector3::zeros();
+                let mut ambiant = Vector3::zeros();
 
                 for light in &self.lights {
                     let light_vec = light.position - intersection_point;
@@ -414,22 +419,30 @@ impl Engine {
                     let light_distance = light_vec.norm();
                     let light_value = light.intensity * light.color;
 
+                    ambiant += color * 0.2;
+
                     let shadow_ray =
                         Ray::new(intersection_point, light_dir + relative_normal * EPSILON);
 
-                    self.cast_ray(&shadow_ray, depth - 1, EPSILON, light_distance);
-
-                    diffuse += {
-                        let dot_prod = light_dir.dot(&relative_normal).clamp(0.0, 1.0);
-                        color.component_mul(&light_value) * dot_prod
+                    let transmission = if let Some((_, obj)) =
+                        self.get_closest_hit(&shadow_ray, EPSILON, light_distance)
+                    {
+                        obj.get_texture().surface.transmission.kt
+                    } else {
+                        1.0
                     };
 
-                    specular += {
+                    diffuse += transmission * {
+                        let dot_prod = light_dir.dot(&relative_normal).clamp(0.0, 1.0);
+                        color.component_mul(&light_value) * dot_prod / light_distance
+                    };
+
+                    specular += transmission * {
                         let dot_prod = light_dir
                             .dot(&reflected_dir)
                             .clamp(0.0, 1.0)
                             .powf(surface.specular.ns);
-                        light_value * dot_prod
+                        light_value * dot_prod / light_distance
                     };
                 }
 
@@ -438,7 +451,7 @@ impl Engine {
                         intersection_point + (relative_normal * EPSILON),
                         reflected_dir,
                     );
-                    self.cast_ray(
+                    self.trace_ray(
                         &reflected_ray,
                         depth - 1,
                         self.camera.near_clipping_range,
@@ -455,7 +468,7 @@ impl Engine {
                         ray,
                     ) {
                         Some((refracted_ray, fresnel)) => (
-                            self.cast_ray(
+                            self.trace_ray(
                                 &refracted_ray,
                                 depth,
                                 self.camera.near_clipping_range,
@@ -470,13 +483,12 @@ impl Engine {
                 };
 
                 if surface.transmission.kt > 0. {
-                    (surface.ambient.ka * ambient)
-                        + (surface.diffuse.kd * diffuse)
+                    (surface.diffuse.kd * diffuse)
                         + (surface.specular.ks * specular)
                         + (fresnel * reflection)
                         + ((1. - fresnel) * surface.transmission.kt * refraction)
                 } else {
-                    (surface.ambient.ka * ambient)
+                    ambiant
                         + (surface.diffuse.kd * diffuse)
                         + (surface.specular.ks * specular)
                         + (surface.reflection.kr * reflection)

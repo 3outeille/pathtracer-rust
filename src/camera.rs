@@ -1,7 +1,7 @@
 extern crate nalgebra;
 use std::f64::{consts::PI, INFINITY};
 
-use nalgebra::{Matrix3, Vector3};
+use nalgebra::{Vector3};
 use rand::Rng;
 use serde::Deserialize;
 
@@ -51,66 +51,6 @@ pub struct Camera {
 }
 
 impl Camera {
-    #[allow(dead_code)]
-    pub fn rotate_around_up(&mut self, angle_degree: f64) -> () {
-        let angle_rad = (angle_degree / 180.0) * PI;
-
-        let rotation_mat = Matrix3::new(
-            angle_rad.cos(),
-            0.0,
-            (-angle_rad).sin(),
-            0.0,
-            1.0,
-            0.0,
-            angle_rad.sin(),
-            0.0,
-            angle_rad.cos(),
-        );
-
-        self.right = (rotation_mat * self.right).normalize();
-        self.forward = (rotation_mat * self.forward).normalize();
-    }
-
-    #[allow(dead_code)]
-    pub fn rotate_around_forward(&mut self, angle_degree: f64) -> () {
-        let angle_rad = (angle_degree / 180.0) * PI;
-
-        let rotation_mat = Matrix3::new(
-            angle_rad.cos(),
-            angle_rad.sin(),
-            0.0,
-            (-angle_rad).sin(),
-            angle_rad.cos(),
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-        );
-
-        self.up = (rotation_mat * self.up).normalize();
-        self.right = (rotation_mat * self.right).normalize();
-    }
-
-    #[allow(dead_code)]
-    pub fn rotate_around_right(&mut self, angle_degree: f64) -> () {
-        let angle_rad = (angle_degree / 180.0) * PI;
-
-        let rotation_mat = Matrix3::new(
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            angle_rad.cos(),
-            angle_rad.sin(),
-            0.0,
-            (-angle_rad).sin(),
-            angle_rad.cos(),
-        );
-
-        self.up = (rotation_mat * self.up).normalize();
-        self.forward = (rotation_mat * self.forward).normalize();
-    }
-
     pub fn create_ray(&self, x: usize, y: usize) -> Ray {
         let width = self.canvas_width;
         let height = self.canvas_height;

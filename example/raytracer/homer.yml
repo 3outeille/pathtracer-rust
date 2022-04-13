@@ -1,0 +1,209 @@
+camera:
+  origin: [0.0, 2.0, -6.0]
+  forward: [0.0, 0.0, 1.0]
+  up: [0.0, 1.0, 0.0]
+  fov_x_deg: 45.0 # degree
+  near_clipping_range: 0.01
+  canvas_width: 1080
+  canvas_height: 1080
+
+triangles:
+  # Ceiling bottom right
+  - v0: [2.0, 4.0, -2.0]
+    v1: [-2.0, 4.0, 2.0]
+    v2: [2.0, 4.0, 2.0]
+    textmat:
+      color: [0.85, 0.85, 0.7] # beige
+      surface:
+        diffuse:
+          kd: 0.9
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0
+        transmission:
+          kt: 0
+  # Ceiling top left
+  - v0: [-2.0, 4.0, -2.0]
+    v1: [-2.0, 4.0, 2.0] 
+    v2: [2.0, 4.0, -2.0]
+    textmat:
+      color: [0.85, 0.85, 0.7] # beige
+      surface:
+        diffuse:
+          kd: 0.9
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0
+        transmission:
+          kt: 0
+  # Floor bottom right
+  - v0: [2.0, 0.0, 2.0]
+    v1: [-2.0, 0.0, -2.0]
+    v2: [2.0, 0.0, -2.0]
+    textmat:
+      color: [1, 1, 1] # white
+      surface:
+        diffuse:
+          kd: 0.9
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0
+        transmission:
+          kt: 0
+  # Floor top left
+  - v0: [2.0, 0.0, 2.0]
+    v1: [-2.0, 0.0, 2.0]
+    v2: [-2.0, 0.0, -2.0]
+    textmat:
+      color: [1, 1, 1] # green
+      # color: [0.25, 0.6, 0.0] # green
+      surface:
+        diffuse:
+          kd: 0.9
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0
+        transmission:
+          kt: 0
+  # Left wall bottom left
+  - v0: [-2.0, 4.0, -2.0]
+    v1: [-2.0, 0.0, -2.0]
+    v2: [-2.0, 0.0, 2.0]
+    textmat:
+      color: [0.05, 0.6, 1.0] # blue
+      surface:
+        diffuse:
+          kd: 0.9
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0
+        transmission:
+          kt: 0
+  # Left wall top right
+  - v0: [-2.0, 4.0, 2.0]
+    v1: [-2.0, 4.0, -2.0]
+    v2: [-2.0, 0.0, 2.0]
+    textmat:
+      color: [0.05, 0.6, 1.0] # blue
+      surface:
+        diffuse:
+          kd: 0.9
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0
+        transmission:
+          kt: 0
+  # Back wall bottom right
+  - v0: [2.0, 4.0, 2.0]
+    v1: [-2.0, 0.0, 2.0]
+    v2: [2.0, 0.0, 2.0]
+    textmat:
+      color: [0.75, 0.75, 0.75] # white
+      surface:
+        diffuse:
+          kd: 0.9
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0.3
+        transmission:
+          kt: 0
+  # Back wall top left
+  - v0: [2.0, 4.0, 2.0]
+    v1: [-2.0, 4.0, 2.0]
+    v2: [-2.0, 0.0, 2.0]
+    textmat:
+      color: [0.75, 0.75, 0.75] # white
+      surface:
+        diffuse:
+          kd: 0.9
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0.3
+        transmission:
+          kt: 0
+  # Right wall bottom right
+  - v0: [2.0, 0.0, -2.0]
+    v1: [2.0, 4.0, -2.0]
+    v2: [2.0, 0.0, 2.0]
+    textmat:
+      color: [0.75, 0.15, 0.15] # red
+      surface:
+        diffuse:
+          kd: 0.9
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0
+        transmission:
+          kt: 0
+  # Right wall top left
+  - v0: [2.0, 0.0, 2.0]
+    v1: [2.0, 4.0, -2.0]
+    v2: [2.0, 4.0, 2.0]
+    textmat:
+      color: [0.75, 0.15, 0.15] # red
+      surface:
+        diffuse:
+          kd: 0.9
+        specular:
+          ks: 1.0
+          ns: 15.0
+        reflection:
+          kr: 0
+        transmission:
+          kt: 0
+
+spheres:
+  - center: [1.2, 0.5, 0.2]
+    radius: 0.5
+    textmat:
+      color: [1, 1, 1] # transparent
+      surface:
+        diffuse:
+          kd: 0
+        specular:
+          ks: 0
+          ns: 15
+        reflection:
+          kr: 0
+        transmission:
+          kt: 1
+meshes:
+  - path: example/models/homer.obj
+    scale: 3
+    origin: [1.5, -0.5, 2]
+    rotation: [0, 180, 0]
+    textmat:
+      color: [1.0, 0.85, 0.06]
+      surface:
+        diffuse:
+          kd: 0.9
+        specular:
+          ks: 0.0
+          ns: 15.0
+        reflection:
+          kr: 0.0
+        transmission:
+          kt: 0.0
+
+lights:
+  - position: [0, 3.7, -0.5]
+    color: [1.0, 1.0, 1.0]
+    intensity: 2.5
