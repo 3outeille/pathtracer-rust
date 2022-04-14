@@ -32,8 +32,7 @@ impl MeshConfig {
     }
 
     pub fn parse_obj_file(&self) -> Result<Vec<[Vector3<f64>; 3]>, io::Error> {
-        let f = File::open(&self.path)?;
-        let f = BufReader::new(f);
+        let f = BufReader::new(File::open(&self.path)?);
 
         let mut vertices: Vec<Vector3<f64>> = Vec::new();
         let mut faces = Vec::new();
@@ -57,6 +56,7 @@ impl MeshConfig {
                         .map(|val| val.parse::<f64>().unwrap())
                         .collect::<Vec<f64>>();
 
+                    // Apply transformation to all verticies
                     vertices.push(
                         (rotation_matrix * Vector3::new(xyz[0], xyz[1], xyz[2])) * self.scale
                             + self.origin,
@@ -95,8 +95,8 @@ impl MeshConfig {
             });
         }
 
+        // Compute AABB
         let mut bounds = [Vector3::zeros(); 2];
-        
         for triangle in faces {
             for vertex in triangle {
                 bounds[0].x = vertex.x.min(bounds[0].x);

@@ -184,56 +184,18 @@ impl ObjectsTrait for Mesh {
         near_clipping_range: f64,
         far_clipping_range: f64,
     ) -> Option<HitRecord> {
-        let mut tmin = (self.bounds[0].x - ray.origin.x) / ray.direction.x;
-        let mut tmax = (self.bounds[1].x - ray.origin.x) / ray.direction.x;
-
-        if tmin > tmax {
-            swap(&mut tmin, &mut tmax);
-        }
-
-        let mut tymin = (self.bounds[0].y - ray.origin.y) / ray.direction.y;
-        let mut tymax = (self.bounds[1].y - ray.origin.y) / ray.direction.y;
-
-        if tymin > tymax {
-            swap(&mut tymin, &mut tymax);
-        }
-
-        if tmin > tymax || tymin > tmax {
+        if !self.intersect_aabb(ray) {
             return None;
         }
 
-        if tymin > tmin {
-            tmin = tymin;
-        }
-
-        if tymax < tmax {
-            tmax = tymax;
-        }
-
-        let mut tzmin = (self.bounds[0].z - ray.origin.z) / ray.direction.z;
-        let mut tzmax = (self.bounds[1].z - ray.origin.z) / ray.direction.z;
-
-        if tzmin > tzmax {
-            swap(&mut tzmin, &mut tzmax);
-        }
-
-        if tmin > tzmax || tzmin > tmax {
-            return None;
-        }
-
-        let mut min_t = std::f64::MAX;
+        let mut min_t = far_clipping_range;
         let mut min_obj = None;
 
         for object in &self.triangles {
             // Find the nearest root.
-            match object.intersects(&ray, near_clipping_range, far_clipping_range) {
-                Some(record) if (record.t < min_t) => {
-                    min_t = record.t;
-                    min_obj = Some(record);
-                }
-                _ => {
-                    continue;
-                }
+            if let Some(record) = object.intersects(&ray, near_clipping_range, min_t) {
+                min_t = record.t;
+                min_obj = Some(record);
             };
         }
 
@@ -242,5 +204,38 @@ impl ObjectsTrait for Mesh {
 
     fn get_texture(&self) -> TextureMaterial {
         return self.textmat;
+    }
+}
+
+impl Mesh {
+    fn intersect_aabb(&self, ray: &Ray) -> bool {
+        let mut tmin = (self.bounds[0].x - ray.origin.x) / ray.direction.x;
+        let mut tmax = (self.bounds[1].x - ray.origin.x) / ray.direction.x;
+        if tmin > tmax {
+            swap(&mut tmin, &mut tmax);
+        }
+        let mut tymin = (self.bounds[0].y - ray.origin.y) / ray.direction.y;
+        let mut tymax = (self.bounds[1].y - ray.origin.y) / ray.direction.y;
+        if tymin > tymax {
+            swap(&mut tymin, &mut tymax);
+        }
+        if tmin > tymax || tymin > tmax {
+            return false;
+        }
+        if tymin > tmin {
+            tmin = tymin;
+        }
+        if tymax < tmax {
+            tmax = tymax;
+        }
+        let mut tzmin = (self.bounds[0].z - ray.origin.z) / ray.direction.z;
+        let mut tzmax = (self.bounds[1].z - ray.origin.z) / ray.direction.z;
+        if tzmin > tzmax {
+            swap(&mut tzmin, &mut tzmax);
+        }
+        if tmin > tzmax || tzmin > tmax {
+            return false;
+        }
+        true
     }
 }

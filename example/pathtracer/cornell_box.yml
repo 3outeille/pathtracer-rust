@@ -1,5 +1,5 @@
 camera:
-  origin: [0.0, 2.0, -8.0]
+  origin: [0.0, 2.0, -6.0]
   forward: [0.0, 0.0, 1.0]
   up: [0.0, 1.0, 0.0]
   fov_x_deg: 45.0 # degree

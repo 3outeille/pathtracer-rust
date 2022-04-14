@@ -88,6 +88,7 @@ impl Engine {
     ) -> Vec<u8> {
         let mut u8_buffer = vec![0; float_buffer.len() * 3];
 
+        // Reduce gamma correction with raytracer
         let apply_gamma_corr = if render_mode == RenderMode::Raytracer {
             |x: f64| (x.clamp(0., 1.).powf(1. / 1.5) * 255.) as u8
         } else {
@@ -103,17 +104,6 @@ impl Engine {
         return u8_buffer;
     }
 
-    #[allow(dead_code)]
-    pub fn render(self, render_mode: RenderMode, cpu: usize, samples: u32) -> Vec<u8> {
-        Engine::buffer_float_to_u8(
-            &self
-                .stream_render(render_mode, cpu, samples)
-                .recv()
-                .unwrap(),
-            render_mode,
-        )
-    }
-
     pub fn stream_render(
         self,
         render_mode: RenderMode,
@@ -122,10 +112,13 @@ impl Engine {
     ) -> Receiver<Vec<Vector3<f64>>> {
         assert!((self.camera.canvas_width * self.camera.canvas_height) as usize % cpu == 0);
 
+        // Move engine to heap for rust-safe multithreading
         let engine = Arc::new(self);
 
+        // Setup stream
         let (sender, receiver) = mpsc::channel();
 
+        // Spawn thread and loop indefinitely to return frame stream
         thread::spawn(move || loop {
             let mut handles = vec![];
 
@@ -133,6 +126,7 @@ impl Engine {
                 let engine = engine.clone();
 
                 let t = thread::spawn(move || {
+                    // Thread result buffer
                     let mut thread_res = vec![
                         Vector3::zeros();
                         (engine.camera.canvas_width * engine.camera.canvas_height)
@@ -144,6 +138,7 @@ impl Engine {
                         for x in 0..engine.canvas_width {
                             let offset = y * engine.canvas_width + x;
 
+                            // Only render pixels assigned to that thread
                             if offset % cpu != w {
                                 continue;
                             }
@@ -167,6 +162,7 @@ impl Engine {
                                 samples.push(engine.trace_path(&ray, REFLECTION_DEPTH));
                             }
 
+                            // Compute mean of samples
                             let pixel = samples.iter().fold(Vector3::zeros(), |a, b| a + b)
                                 / samples.len() as f64;
 
@@ -177,11 +173,13 @@ impl Engine {
                     thread_res
                 });
 
+                // Store handle to join thread later
                 handles.push(t);
             }
 
             let mut pixels = vec![Vector3::zeros(); engine.canvas_width * engine.canvas_height];
 
+            // Wait for threads to finish and combine buffers to get a complete frame
             for (i, handle) in handles.into_iter().enumerate() {
                 let thread_res = handle.join().unwrap();
 
@@ -214,20 +212,15 @@ impl Engine {
         near_clipping_range: f64,
         far_clipping_range: f64,
     ) -> Option<(HitRecord, &Box<dyn ObjectsTrait>)> {
-        let mut min_t = std::f64::MAX;
+        let mut min_t = far_clipping_range;
         let mut min_record = None;
 
+        // Find the nearest object.
         for object in &self.objects {
-            // Find the nearest root.
-            match object.intersects(&ray, near_clipping_range, far_clipping_range) {
-                Some(record) if (record.t < min_t) => {
-                    min_t = record.t;
-                    min_record = Some((record, object));
-                }
-                _ => {
-                    continue;
-                }
-            };
+            if let Some(record) = object.intersects(&ray, near_clipping_range, min_t) {
+                min_t = record.t;
+                min_record = Some((record, object));
+            }
         }
 
         return min_record;
@@ -297,6 +290,7 @@ impl Engine {
             ray.direction * n_ratio + relative_normal * (n_ratio * cos_theta - cos_theta2),
         );
 
+        // Compute fresnel coefficient
         let fresnel = {
             let r0 = ((n_glass - n_air) / (n_glass + n_air)).powi(2);
             let c = if light_going_into {
@@ -306,6 +300,8 @@ impl Engine {
             };
             r0 + (1. - r0) * (1. - c).powi(5)
         };
+
+        // Sanity check
         assert!(fresnel >= 0. && fresnel <= 1.);
 
         Some((refracted_ray, fresnel))
@@ -366,6 +362,7 @@ impl Engine {
                             surface.transmission.kt * self.trace_path(&refracted_ray, depth),
                             fresnel,
                         ),
+                        // Handle total reflection
                         None => return reflection,
                     }
                 } else {
@@ -378,6 +375,7 @@ impl Engine {
                         + fresnel * reflection
                         + (1. - fresnel) * refraction
                 } else {
+                    // Don't use fresnel coefficient if surface is diffuse
                     emittance + indirect_lightning + surface.reflection.kr * reflection + refraction
                 }
             }
@@ -411,15 +409,13 @@ impl Engine {
                 // Phong Model
                 let mut diffuse = Vector3::zeros();
                 let mut specular = Vector3::zeros();
-                let mut ambiant = Vector3::zeros();
+                let ambiant = color * 0.2;
 
                 for light in &self.lights {
                     let light_vec = light.position - intersection_point;
                     let light_dir = light_vec.normalize();
                     let light_distance = light_vec.norm();
                     let light_value = light.intensity * light.color;
-
-                    ambiant += color * 0.2;
 
                     let shadow_ray =
                         Ray::new(intersection_point, light_dir + relative_normal * EPSILON);

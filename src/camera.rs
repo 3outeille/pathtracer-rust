@@ -66,6 +66,7 @@ impl Camera {
         let viewport_top_left =
             self.forward - viewport_width * self.right + viewport_height * self.up;
 
+        // Add randomness for antialiasing
         let mut rng = rand::thread_rng();
         let dx = rng.gen::<f64>() - 0.5;
         let dy = rng.gen::<f64>() - 0.5;
